@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>你估得贏莊家嗎？ | Beat the Bookie</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="pitch-overlay"></div>
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-pitch-lines"></div>
+      <div class="logo-area">
+        <span class="ball-icon" aria-hidden="true">⚽</span>
+        <h1 class="game-title">你估得贏莊家嗎？</h1>
+        <span class="sub-tag">Beat the Bookie · 西甲真實賠率挑戰</span>
+      </div>
+    </header>
+
+    <main id="main-stage">
+      <!-- 1. START SCREEN -->
+      <section id="start-screen" class="view-screen active" aria-labelledby="start-title">
+        <div class="card intro-card scoreboard-border">
+          <div class="intro-header">
+            <span class="stadium-badge">🏟️ 西甲真數據</span>
+            <h2 id="start-title" class="section-title">挑戰莊家「抽水」神話！</h2>
+            <p class="intro-desc">
+              平時睇波買波，莊家長遠係咪一定必贏？<br>
+              呢度收錄咗西甲真實開賽前賠率同賽果。每局 10 場，你同一位只買「莊家熱門」嘅 AI 盲跟虛擬玩家同場較量，睇下你嘅眼光勁啲，定係莊家抽水無情！
+            </p>
+          </div>
+
+          <!-- Rules Grid -->
+          <div class="rules-grid">
+            <div class="rule-item">
+              <div class="rule-icon">💰</div>
+              <div class="rule-text">
+                <strong>初始本金 100 注</strong>
+                <span>每局玩 10 場，每場固定下注 10 注。</span>
+              </div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-icon">🎯</div>
+              <div class="rule-text">
+                <strong>三瓣任擇 1X2</strong>
+                <span>主勝 (1) / 和局 (X) / 客勝 (2)。中咗賺 <code>10 × (賠率 − 1)</code>，估錯輸 10 注。</span>
+              </div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-icon">🎁</div>
+              <div class="rule-text">
+                <strong>精選波膽加賞</strong>
+                <span>可選填精確比數，成功命中即刻額外獎勵 <strong>+20 注</strong>！</span>
+              </div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-icon">🤖</div>
+              <div class="rule-text">
+                <strong>對抗「跟莊家熱門」</strong>
+                <span>虛擬對手每場自動盲買賠率最低嘅熱門，終局睇下邊個本金多！</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Season Selection -->
+          <div class="season-section">
+            <label class="setting-label">📅 選擇賽季賽事庫：</label>
+            <div class="season-options" role="radiogroup" aria-label="選擇賽事賽季">
+              <button type="button" class="season-btn active" data-season="2025/26" role="radio" aria-checked="true">
+                <span class="btn-primary-text">2025/26 賽季</span>
+                <span class="btn-sub-text">最新 380 場</span>
+              </button>
+              <button type="button" class="season-btn" data-season="2024/25" role="radio" aria-checked="false">
+                <span class="btn-primary-text">2024/25 賽季</span>
+                <span class="btn-sub-text">經典 380 場</span>
+              </button>
+              <button type="button" class="season-btn" data-season="all" role="radio" aria-checked="false">
+                <span class="btn-primary-text">兩季混合</span>
+                <span class="btn-sub-text">全庫 760 場</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Best Score Banner -->
+          <div class="best-record-banner" id="best-score-banner">
+            <span class="trophy-icon">🏆</span>
+            <div class="record-info">
+              <span class="record-title">個人歷史最高本金紀錄</span>
+              <span class="record-value" id="best-score-display">讀取中...</span>
+            </div>
+          </div>
+
+          <!-- CTA Button -->
+          <div class="start-action">
+            <button type="button" id="start-game-btn" class="cta-btn pulse-glow">
+              <span class="btn-icon">⚡</span>
+              <span>開波！</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. GAME SCREEN -->
+      <section id="game-screen" class="view-screen" aria-label="遊戲賽事進行中">
+        <!-- HUD Status Bar -->
+        <div class="game-hud card">
+          <div class="hud-top-row">
+            <div class="round-pill" id="hud-round-pill">
+              <span class="round-badge">場次</span>
+              <span class="round-number" id="hud-round-text">第 1 / 10 場</span>
+            </div>
+            <div class="match-meta-pill" id="hud-match-meta">
+              <span id="hud-season">2025/26</span> · <span id="hud-date">2025-08-15</span>
+            </div>
+          </div>
+
+          <div class="bankroll-comparison">
+            <div class="bankroll-box player-box">
+              <div class="bankroll-header">
+                <span class="actor-icon">👤</span>
+                <span class="actor-name">你的本金</span>
+              </div>
+              <div class="bankroll-num" id="player-bankroll-display">100.0 <span class="unit">注</span></div>
+              <div class="bankroll-change" id="player-change-display">±0.0</div>
+            </div>
+
+            <div class="hud-vs-divider">VS</div>
+
+            <div class="bankroll-box baseline-box">
+              <div class="bankroll-header">
+                <span class="actor-icon">🤖</span>
+                <span class="actor-name">跟莊熱門AI</span>
+              </div>
+              <div class="bankroll-num" id="baseline-bankroll-display">100.0 <span class="unit">注</span></div>
+              <div class="bankroll-change" id="baseline-change-display">±0.0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stadium Match Arena Card -->
+        <div class="card match-arena-card scoreboard-border">
+          <div class="pitch-grass-texture"></div>
+
+          <!-- Teams Board -->
+          <div class="teams-board">
+            <!-- Home Team -->
+            <div class="team-block home-team" id="home-team-block">
+              <div class="team-crest-wrapper" id="home-crest"></div>
+              <div class="team-info">
+                <div class="team-name-zh" id="home-team-zh">皇家馬德里</div>
+                <div class="team-name-en" id="home-team-en">Real Madrid</div>
+              </div>
+            </div>
+
+            <!-- Score / VS Center Display -->
+            <div class="center-score-display" id="center-score-display">
+              <div class="vs-badge" id="vs-badge">VS</div>
+              <div class="revealed-score-box" id="revealed-score-box" style="display: none;">
+                <div class="ft-score-large" id="ft-score-text">2 - 1</div>
+                <div class="sub-score-info" id="sub-score-text">半場 1-0 ｜ 射門 14-8</div>
+                <div class="outcome-tag" id="outcome-tag">主勝</div>
+              </div>
+            </div>
+
+            <!-- Away Team -->
+            <div class="team-block away-team" id="away-team-block">
+              <div class="team-crest-wrapper" id="away-crest"></div>
+              <div class="team-info">
+                <div class="team-name-zh" id="away-team-zh">巴塞隆拿</div>
+                <div class="team-name-en" id="away-team-en">Barcelona</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bookmaker Analysis Bar -->
+          <div class="bookmaker-bar">
+            <div class="margin-indicator">
+              <span class="bar-icon">⚖️</span>
+              <span class="bar-title">莊家抽水率 (Margin)：</span>
+              <span class="margin-val" id="margin-value-display">5.2%</span>
+            </div>
+            <div class="stake-reminder">本場固定下注：<strong>10 注</strong></div>
+          </div>
+
+          <!-- 1X2 Betting Odds Choices -->
+          <div class="odds-board" role="group" aria-label="1X2 賠率選項">
+            <!-- Pick H -->
+            <button type="button" class="odds-choice-btn" id="btn-pick-h" data-pick="H">
+              <div class="fav-badge-slot" id="fav-badge-h"></div>
+              <div class="choice-title">
+                <span class="choice-symbol">1</span>
+                <span class="choice-label">主勝</span>
+              </div>
+              <div class="choice-odds" id="odds-val-h">1.48</div>
+              <div class="prob-row">
+                <span class="prob-label">剔除抽水勝率</span>
+                <span class="prob-val" id="prob-val-h">63.5%</span>
+              </div>
+              <div class="shortcut-hint"><kbd>1</kbd> 鍵選擇</div>
+            </button>
+
+            <!-- Pick D -->
+            <button type="button" class="odds-choice-btn" id="btn-pick-d" data-pick="D">
+              <div class="fav-badge-slot" id="fav-badge-d"></div>
+              <div class="choice-title">
+                <span class="choice-symbol">X</span>
+                <span class="choice-label">和局</span>
+              </div>
+              <div class="choice-odds" id="odds-val-d">4.00</div>
+              <div class="prob-row">
+                <span class="prob-label">剔除抽水勝率</span>
+                <span class="prob-val" id="prob-val-d">23.5%</span>
+              </div>
+              <div class="shortcut-hint"><kbd>X</kbd> 鍵選擇</div>
+            </button>
+
+            <!-- Pick A -->
+            <button type="button" class="odds-choice-btn" id="btn-pick-a" data-pick="A">
+              <div class="fav-badge-slot" id="fav-badge-a"></div>
+              <div class="choice-title">
+                <span class="choice-symbol">2</span>
+                <span class="choice-label">客勝</span>
+              </div>
+              <div class="choice-odds" id="odds-val-a">8.00</div>
+              <div class="prob-row">
+                <span class="prob-label">剔除抽水勝率</span>
+                <span class="prob-val" id="prob-val-a">13.0%</span>
+              </div>
+              <div class="shortcut-hint"><kbd>2</kbd> 鍵選擇</div>
+            </button>
+          </div>
+
+          <!-- Optional Exact Score Guess Panel -->
+          <div class="exact-score-section">
+            <div class="exact-score-toggle-bar">
+              <label class="custom-toggle-label">
+                <input type="checkbox" id="exact-score-toggle" class="toggle-checkbox">
+                <span class="toggle-switch-visual"></span>
+                <span class="toggle-text">🎯 兼估波膽（精確比數）？<small class="bonus-tag">估中額外 +20 注！</small></span>
+              </label>
+            </div>
+
+            <div class="exact-score-steppers" id="exact-score-steppers" style="display: none;">
+              <div class="score-stepper-box">
+                <span class="stepper-team-label" id="stepper-home-name">主隊</span>
+                <div class="stepper-controls">
+                  <button type="button" class="stepper-btn" id="stepper-home-minus" aria-label="主隊減一球">−</button>
+                  <span class="stepper-val" id="stepper-home-val">1</span>
+                  <button type="button" class="stepper-btn" id="stepper-home-plus" aria-label="主隊加一球">+</button>
+                </div>
+              </div>
+
+              <div class="score-stepper-colon">:</div>
+
+              <div class="score-stepper-box">
+                <span class="stepper-team-label" id="stepper-away-name">客隊</span>
+                <div class="stepper-controls">
+                  <button type="button" class="stepper-btn" id="stepper-away-minus" aria-label="客隊減一球">−</button>
+                  <span class="stepper-val" id="stepper-away-val">0</span>
+                  <button type="button" class="stepper-btn" id="stepper-away-plus" aria-label="客隊加一球">+</button>
+                </div>
+              </div>
+
+              <button type="button" class="clear-score-btn" id="clear-score-btn" title="清除波膽選擇">不猜波膽</button>
+            </div>
+          </div>
+
+          <!-- Bottom Action Container -->
+          <div class="arena-action-container">
+            <!-- Reveal CTA -->
+            <button type="button" id="reveal-btn" class="cta-btn primary-action-btn" disabled>
+              <span class="btn-icon">📢</span>
+              <span id="reveal-btn-text">請先選擇「主勝 / 和局 / 客勝」</span>
+            </button>
+
+            <!-- Reveal Result Banner (shown post-reveal) -->
+            <div id="round-result-card" class="round-result-card" style="display: none;">
+              <div class="result-headline" id="result-headline">
+                <span class="result-status-icon" id="result-status-icon">🎉</span>
+                <div class="result-status-texts">
+                  <div class="status-main" id="status-main-text">命中主勝！獲利 +4.8 注</div>
+                  <div class="status-sub" id="status-sub-text">波膽未有投注</div>
+                </div>
+              </div>
+
+              <div class="comparison-results">
+                <div class="result-comparison-row">
+                  <span class="res-label">👤 你的結算：</span>
+                  <span class="res-val" id="player-round-pl">+4.8 注</span>
+                </div>
+                <div class="result-comparison-row">
+                  <span class="res-label">🤖 跟莊熱門結算：</span>
+                  <span class="res-val" id="baseline-round-pl">+4.8 注 (買主勝)</span>
+                </div>
+              </div>
+
+              <button type="button" id="next-round-btn" class="cta-btn advance-btn pulse-glow">
+                <span>下一場</span>
+                <span class="btn-icon">⏩</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. END SCREEN -->
+      <section id="end-screen" class="view-screen" aria-label="賽季結算戰報">
+        <div class="card end-card scoreboard-border">
+          <div class="end-header">
+            <span class="trophy-badge" id="end-trophy-badge">🏆</span>
+            <h2 class="section-title">10 場西甲大戰結束！</h2>
+            <div class="verdict-banner" id="verdict-banner">
+              <span class="verdict-text" id="verdict-text">贏咗莊家！</span>
+            </div>
+            <p class="verdict-detail" id="verdict-detail">你的眼光成功打破莊家抽水劣勢，戰勝盲跟熱門嘅 AI！</p>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-overview-grid">
+            <div class="stat-card highlight-card">
+              <div class="stat-label">你的最終本金</div>
+              <div class="stat-value" id="stat-final-bankroll">124.5 <span class="sub-unit">注</span></div>
+              <div class="stat-subtext" id="stat-net-pl">淨獲利：+24.5 注</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">跟莊熱門 AI 本金</div>
+              <div class="stat-value" id="stat-baseline-bankroll">98.0 <span class="sub-unit">注</span></div>
+              <div class="stat-subtext" id="stat-baseline-pl">淨獲利：-2.0 注</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">1X2 勝出率</div>
+              <div class="stat-value" id="stat-hit-rate">7 / 10</div>
+              <div class="stat-subtext" id="stat-hit-pct">勝率 70.0%</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">精確波膽命中</div>
+              <div class="stat-value" id="stat-score-hits">1 / 10</div>
+              <div class="stat-subtext">彩金 +20 注</div>
+            </div>
+
+            <div class="stat-card roi-card">
+              <div class="stat-label">投資回報率 (ROI)</div>
+              <div class="stat-value" id="stat-roi">+24.5%</div>
+              <div class="stat-subtext">基於總本金 100 注</div>
+            </div>
+
+            <div class="stat-card record-card" id="end-record-card">
+              <div class="stat-label">歷史最佳紀錄</div>
+              <div class="stat-value" id="end-best-score">145.0 注</div>
+              <div class="stat-subtext" id="end-record-sub">維持紀錄</div>
+            </div>
+          </div>
+
+          <!-- Match Recap List -->
+          <div class="recap-section">
+            <h3 class="recap-title">逐場賽果回顧 (10 場詳情)</h3>
+            <div class="recap-list" id="recap-list-container">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- End CTAs -->
+          <div class="end-actions">
+            <button type="button" id="replay-btn" class="cta-btn primary-action-btn">
+              <span class="btn-icon">⚽</span>
+              <span>再玩一轉</span>
+            </button>
+            <button type="button" id="home-btn" class="cta-btn secondary-btn">
+              <span class="btn-icon">🏠</span>
+              <span>返主頁</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>西甲官方真實賽果與賠率數據 (2024/25 & 2025/26) · 純前端離線運行 · 遊戲博彩模擬無真實金錢</p>
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
