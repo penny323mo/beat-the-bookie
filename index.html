@@ -16,7 +16,7 @@
       <div class="logo-area">
         <span class="ball-icon" aria-hidden="true">⚽</span>
         <h1 class="game-title">你估得贏莊家嗎？</h1>
-        <span class="sub-tag">Beat the Bookie · 西甲真實賠率挑戰</span>
+        <span class="sub-tag">西甲真實賠率挑戰 · Beat the Bookie</span>
       </div>
     </header>
 
@@ -65,19 +65,22 @@
             </div>
           </div>
 
+          <!-- Error Banner for missing data -->
+          <div id="start-error-banner" class="error-banner" style="display: none;" role="alert"></div>
+
           <!-- Season Selection -->
           <div class="season-section">
-            <label class="setting-label">📅 選擇賽季賽事庫：</label>
-            <div class="season-options" role="radiogroup" aria-label="選擇賽事賽季">
-              <button type="button" class="season-btn active" data-season="2025/26" role="radio" aria-checked="true">
+            <label class="setting-label" id="season-group-label">📅 選擇賽季賽事庫：</label>
+            <div class="season-options" role="radiogroup" aria-labelledby="season-group-label">
+              <button type="button" class="season-btn active" data-season="2025/26" role="radio" aria-checked="true" tabindex="0">
                 <span class="btn-primary-text">2025/26 賽季</span>
                 <span class="btn-sub-text">最新 380 場</span>
               </button>
-              <button type="button" class="season-btn" data-season="2024/25" role="radio" aria-checked="false">
+              <button type="button" class="season-btn" data-season="2024/25" role="radio" aria-checked="false" tabindex="-1">
                 <span class="btn-primary-text">2024/25 賽季</span>
                 <span class="btn-sub-text">經典 380 場</span>
               </button>
-              <button type="button" class="season-btn" data-season="all" role="radio" aria-checked="false">
+              <button type="button" class="season-btn" data-season="all" role="radio" aria-checked="false" tabindex="-1">
                 <span class="btn-primary-text">兩季混合</span>
                 <span class="btn-sub-text">全庫 760 場</span>
               </button>
@@ -121,7 +124,7 @@
             <div class="bankroll-box player-box">
               <div class="bankroll-header">
                 <span class="actor-icon">👤</span>
-                <span class="actor-name">你的本金</span>
+                <span class="actor-name">你嘅本金</span>
               </div>
               <div class="bankroll-num" id="player-bankroll-display">100.0 <span class="unit">注</span></div>
               <div class="bankroll-change" id="player-change-display">±0.0</div>
@@ -157,7 +160,7 @@
 
             <!-- Score / VS Center Display -->
             <div class="center-score-display" id="center-score-display">
-              <div class="vs-badge" id="vs-badge">VS</div>
+              <div class="vs-badge" id="vs-badge">對賽</div>
               <div class="revealed-score-box" id="revealed-score-box" style="display: none;">
                 <div class="ft-score-large" id="ft-score-text">2 - 1</div>
                 <div class="sub-score-info" id="sub-score-text">半場 1-0 ｜ 射門 14-8</div>
@@ -179,7 +182,7 @@
           <div class="bookmaker-bar">
             <div class="margin-indicator">
               <span class="bar-icon">⚖️</span>
-              <span class="bar-title">莊家抽水率 (Margin)：</span>
+              <span class="bar-title">莊家抽水率：</span>
               <span class="margin-val" id="margin-value-display">5.2%</span>
             </div>
             <div class="stake-reminder">本場固定下注：<strong>10 注</strong></div>
@@ -248,7 +251,7 @@
                 <span class="stepper-team-label" id="stepper-home-name">主隊</span>
                 <div class="stepper-controls">
                   <button type="button" class="stepper-btn" id="stepper-home-minus" aria-label="主隊減一球">−</button>
-                  <span class="stepper-val" id="stepper-home-val">1</span>
+                  <span class="stepper-val" id="stepper-home-val">—</span>
                   <button type="button" class="stepper-btn" id="stepper-home-plus" aria-label="主隊加一球">+</button>
                 </div>
               </div>
@@ -259,7 +262,7 @@
                 <span class="stepper-team-label" id="stepper-away-name">客隊</span>
                 <div class="stepper-controls">
                   <button type="button" class="stepper-btn" id="stepper-away-minus" aria-label="客隊減一球">−</button>
-                  <span class="stepper-val" id="stepper-away-val">0</span>
+                  <span class="stepper-val" id="stepper-away-val">—</span>
                   <button type="button" class="stepper-btn" id="stepper-away-plus" aria-label="客隊加一球">+</button>
                 </div>
               </div>
@@ -288,7 +291,7 @@
 
               <div class="comparison-results">
                 <div class="result-comparison-row">
-                  <span class="res-label">👤 你的結算：</span>
+                  <span class="res-label">👤 你嘅結算：</span>
                   <span class="res-val" id="player-round-pl">+4.8 注</span>
                 </div>
                 <div class="result-comparison-row">
@@ -315,13 +318,13 @@
             <div class="verdict-banner" id="verdict-banner">
               <span class="verdict-text" id="verdict-text">贏咗莊家！</span>
             </div>
-            <p class="verdict-detail" id="verdict-detail">你的眼光成功打破莊家抽水劣勢，戰勝盲跟熱門嘅 AI！</p>
+            <p class="verdict-detail" id="verdict-detail">你嘅眼光成功打破莊家抽水劣勢，戰勝盲跟熱門嘅 AI！</p>
           </div>
 
           <!-- Stats Grid -->
           <div class="stats-overview-grid">
             <div class="stat-card highlight-card">
-              <div class="stat-label">你的最終本金</div>
+              <div class="stat-label">你嘅最終本金</div>
               <div class="stat-value" id="stat-final-bankroll">124.5 <span class="sub-unit">注</span></div>
               <div class="stat-subtext" id="stat-net-pl">淨獲利：+24.5 注</div>
             </div>
@@ -341,11 +344,11 @@
             <div class="stat-card">
               <div class="stat-label">精確波膽命中</div>
               <div class="stat-value" id="stat-score-hits">1 / 10</div>
-              <div class="stat-subtext">彩金 +20 注</div>
+              <div class="stat-subtext" id="stat-score-bonus-sub">彩金 +20 注</div>
             </div>
 
             <div class="stat-card roi-card">
-              <div class="stat-label">投資回報率 (ROI)</div>
+              <div class="stat-label">投資回報率</div>
               <div class="stat-value" id="stat-roi">+24.5%</div>
               <div class="stat-subtext">基於總本金 100 注</div>
             </div>

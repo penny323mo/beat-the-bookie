@@ -86,11 +86,17 @@
     const overround = rH + rD + rA;
     const marginPct = (overround - 1) * 100;
 
-    const pH = (rH / overround) * 100;
-    const pD = (rD / overround) * 100;
-    const pA = (rA / overround) * 100;
+    const pH_raw = (rH / overround) * 100;
+    const pD_raw = (rD / overround) * 100;
+    const pA_raw = (rA / overround) * 100;
+
+    // Guarantee that rounded percentages strictly sum to 100.0%
+    const pH = Math.round(pH_raw * 10) / 10;
+    const pD = Math.round(pD_raw * 10) / 10;
+    const pA = Math.round((100 - pH - pD) * 10) / 10;
 
     // Determine Favourite (lowest odds)
+    // Note: tie-break priority is H > A > D when odds are identical (spec favourite-picking)
     const minOdds = Math.min(odds.h, odds.d, odds.a);
     let fav = 'H';
     if (odds.h === minOdds) fav = 'H';
@@ -171,10 +177,11 @@
     playerBankroll: 100.0,
     baselineBankroll: 100.0,
     isRoundRevealed: false,
+    isAdvancing: false,
     selectedPick: null, // 'H' | 'D' | 'A'
     exactScoreActive: false,
-    guessHome: 1,
-    guessAway: 0,
+    guessHome: null,
+    guessAway: null,
     sessionRecap: []
   };
 
@@ -189,6 +196,7 @@
     seasonBtns: document.querySelectorAll('.season-btn'),
     bestScoreDisplay: document.getElementById('best-score-display'),
     startGameBtn: document.getElementById('start-game-btn'),
+    startErrorBanner: document.getElementById('start-error-banner'),
 
     // Game HUD
     hudRoundText: document.getElementById('hud-round-text'),
@@ -263,6 +271,7 @@
     statHitRate: document.getElementById('stat-hit-rate'),
     statHitPct: document.getElementById('stat-hit-pct'),
     statScoreHits: document.getElementById('stat-score-hits'),
+    statScoreBonusSub: document.getElementById('stat-score-bonus-sub'),
     statRoi: document.getElementById('stat-roi'),
     endBestScore: document.getElementById('end-best-score'),
     endRecordSub: document.getElementById('end-record-sub'),
@@ -278,6 +287,15 @@
     });
     screenEl.classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Focus primary interactive control for keyboard navigation
+    if (screenEl === DOM.startScreen) {
+      if (DOM.startGameBtn) DOM.startGameBtn.focus();
+    } else if (screenEl === DOM.gameScreen) {
+      if (DOM.btnPickH) DOM.btnPickH.focus();
+    } else if (screenEl === DOM.endScreen) {
+      if (DOM.replayBtn) DOM.replayBtn.focus();
+    }
   }
 
   // --- Initial Start Screen Setup ---
@@ -293,15 +311,44 @@
   function initStartScreen() {
     updateStartScreenBestScore();
 
-    DOM.seasonBtns.forEach(btn => {
+    const seasonButtons = Array.from(DOM.seasonBtns);
+
+    function selectSeasonBtn(targetBtn) {
+      seasonButtons.forEach(b => {
+        const isMatch = b === targetBtn;
+        b.classList.toggle('active', isMatch);
+        b.setAttribute('aria-checked', isMatch ? 'true' : 'false');
+        b.setAttribute('tabindex', isMatch ? '0' : '-1');
+      });
+      targetBtn.focus();
+      state.selectedSeason = targetBtn.dataset.season;
+    }
+
+    seasonButtons.forEach((btn, idx) => {
       btn.addEventListener('click', () => {
-        DOM.seasonBtns.forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-checked', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-checked', 'true');
-        state.selectedSeason = btn.dataset.season;
+        selectSeasonBtn(btn);
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        let targetIdx = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          targetIdx = (idx + 1) % seasonButtons.length;
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          targetIdx = (idx - 1 + seasonButtons.length) % seasonButtons.length;
+        } else if (e.key === 'Home') {
+          targetIdx = 0;
+        } else if (e.key === 'End') {
+          targetIdx = seasonButtons.length - 1;
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectSeasonBtn(btn);
+          return;
+        }
+
+        if (targetIdx !== null) {
+          e.preventDefault();
+          selectSeasonBtn(seasonButtons[targetIdx]);
+        }
       });
     });
 
@@ -310,8 +357,17 @@
 
   // --- Game Initialization ---
   function startNewGame() {
+    if (DOM.startErrorBanner) {
+      DOM.startErrorBanner.style.display = 'none';
+      DOM.startErrorBanner.textContent = '';
+    }
+
     if (!window.MATCHES || !Array.isArray(window.MATCHES) || window.MATCHES.length === 0) {
-      alert('未載入比賽數據！請先執行 python3 build_data.py 生成 data.js。');
+      if (DOM.startErrorBanner) {
+        DOM.startErrorBanner.textContent = '未載入比賽數據！請先執行 python3 build_data.py 生成 data.js。';
+        DOM.startErrorBanner.style.display = 'block';
+        DOM.startErrorBanner.focus();
+      }
       return;
     }
 
@@ -322,7 +378,11 @@
     }
 
     if (pool.length < TOTAL_ROUNDS) {
-      alert('賽事池數量不足，無法開始。');
+      if (DOM.startErrorBanner) {
+        DOM.startErrorBanner.textContent = '賽事池數量不足，無法開始。';
+        DOM.startErrorBanner.style.display = 'block';
+        DOM.startErrorBanner.focus();
+      }
       return;
     }
 
@@ -332,6 +392,7 @@
     state.playerBankroll = 100.0;
     state.baselineBankroll = 100.0;
     state.sessionRecap = [];
+    state.isAdvancing = false;
 
     showScreen(DOM.gameScreen);
     loadRound(state.currentRoundIdx);
@@ -343,10 +404,11 @@
     const oddsMath = calculateOddsMath(match.odds);
 
     state.isRoundRevealed = false;
+    state.isAdvancing = false;
     state.selectedPick = null;
     state.exactScoreActive = false;
-    state.guessHome = 1;
-    state.guessAway = 0;
+    state.guessHome = null;
+    state.guessAway = null;
 
     // HUD Update
     DOM.hudRoundText.textContent = `第 ${roundIdx + 1} / ${TOTAL_ROUNDS} 場`;
@@ -397,13 +459,21 @@
       btn.setAttribute('aria-pressed', 'false');
     });
 
-    // Reset Exact Score Panel
+    // Re-enable Exact Score controls
+    DOM.exactScoreToggle.disabled = false;
+    DOM.stepperHomeMinus.disabled = false;
+    DOM.stepperHomePlus.disabled = false;
+    DOM.stepperAwayMinus.disabled = false;
+    DOM.stepperAwayPlus.disabled = false;
+    DOM.clearScoreBtn.disabled = false;
+
+    // Reset Exact Score Panel (default off/blank)
     DOM.exactScoreToggle.checked = false;
     DOM.exactScoreSteppers.style.display = 'none';
     DOM.stepperHomeName.textContent = homeInfo.zh;
     DOM.stepperAwayName.textContent = awayInfo.zh;
-    DOM.stepperHomeVal.textContent = '1';
-    DOM.stepperAwayVal.textContent = '0';
+    DOM.stepperHomeVal.textContent = '—';
+    DOM.stepperAwayVal.textContent = '—';
 
     // Reset Reveal Actions
     DOM.revealBtn.style.display = 'flex';
@@ -442,11 +512,12 @@
 
   // --- Exact Score Stepper Handling ---
   function updateScoreDisplay() {
-    DOM.stepperHomeVal.textContent = state.guessHome;
-    DOM.stepperAwayVal.textContent = state.guessAway;
+    DOM.stepperHomeVal.textContent = state.guessHome !== null ? state.guessHome : '—';
+    DOM.stepperAwayVal.textContent = state.guessAway !== null ? state.guessAway : '—';
   }
 
   function handleScoreToggle() {
+    if (state.isRoundRevealed) return;
     state.exactScoreActive = DOM.exactScoreToggle.checked;
     DOM.exactScoreSteppers.style.display = state.exactScoreActive ? 'flex' : 'none';
     if (state.exactScoreActive) {
@@ -455,9 +526,13 @@
   }
 
   function clearExactScore() {
+    if (state.isRoundRevealed) return;
     DOM.exactScoreToggle.checked = false;
     state.exactScoreActive = false;
+    state.guessHome = null;
+    state.guessAway = null;
     DOM.exactScoreSteppers.style.display = 'none';
+    updateScoreDisplay();
   }
 
   // --- Reveal Result Logic ---
@@ -470,6 +545,14 @@
 
     // Disable odds buttons
     [DOM.btnPickH, DOM.btnPickD, DOM.btnPickA].forEach(btn => btn.disabled = true);
+
+    // Disable exact-score controls after reveal
+    DOM.exactScoreToggle.disabled = true;
+    DOM.stepperHomeMinus.disabled = true;
+    DOM.stepperHomePlus.disabled = true;
+    DOM.stepperAwayMinus.disabled = true;
+    DOM.stepperAwayPlus.disabled = true;
+    DOM.clearScoreBtn.disabled = true;
 
     // 1. Calculate Player 1X2 P/L: correct pick -> +10*(odds-1), wrong -> -10
     const playerPickedOdds = match.odds[state.selectedPick.toLowerCase()];
@@ -484,7 +567,8 @@
     // 2. Calculate Exact Score Bonus: if exact score correct -> +20 units
     let isHitScore = false;
     let exactScoreBonus = 0;
-    if (state.exactScoreActive) {
+    const isScoreCommitted = state.exactScoreActive && state.guessHome !== null && state.guessAway !== null;
+    if (isScoreCommitted) {
       if (state.guessHome === match.fthg && state.guessAway === match.ftag) {
         isHitScore = true;
         exactScoreBonus = EXACT_SCORE_BONUS;
@@ -513,7 +597,7 @@
       playerPick: state.selectedPick,
       playerOdds: playerPickedOdds,
       isHit1x2: isHit1x2,
-      exactScoreActive: state.exactScoreActive,
+      exactScoreActive: isScoreCommitted,
       guessHome: state.guessHome,
       guessAway: state.guessAway,
       isHitScore: isHitScore,
@@ -567,7 +651,7 @@
       DOM.statusMainText.textContent = `未中【${outcomeLabels[state.selectedPick]}】！損失 -10.0 注`;
     }
 
-    if (state.exactScoreActive) {
+    if (isScoreCommitted) {
       if (isHitScore) {
         DOM.statusSubText.textContent = `🎯 波膽猜測 ${state.guessHome}-${state.guessAway} 命中！特別獎勵 +20.0 注！`;
         DOM.statusSubText.style.color = '#ffd700';
@@ -589,6 +673,9 @@
 
   // --- Advance to Next Round or End Screen ---
   function advanceNextRound() {
+    if (!state.isRoundRevealed || state.isAdvancing) return;
+    state.isAdvancing = true;
+
     if (state.currentRoundIdx < TOTAL_ROUNDS - 1) {
       state.currentRoundIdx++;
       loadRound(state.currentRoundIdx);
@@ -599,6 +686,7 @@
 
   // --- End Screen & Summary ---
   function showEndScreen() {
+    state.isAdvancing = false;
     showScreen(DOM.endScreen);
 
     const playerFinal = state.playerBankroll;
@@ -637,13 +725,19 @@
     const isNewRecord = saveBestScore(playerFinal);
     const currentBest = getBestScore();
 
-    DOM.endBestScore.textContent = `${formatNum(currentBest !== null ? currentBest : playerFinal)} 注`;
-    if (isNewRecord && (previousBest === null || playerFinal > previousBest)) {
-      DOM.endRecordSub.textContent = '🎉 刷新個人最高紀錄！';
-      DOM.endRecordSub.style.color = '#ffd700';
+    if (currentBest !== null) {
+      DOM.endBestScore.textContent = `${formatNum(currentBest)} 注`;
+      if (isNewRecord && (previousBest === null || playerFinal > previousBest)) {
+        DOM.endRecordSub.textContent = '🎉 刷新個人最高紀錄！';
+        DOM.endRecordSub.style.color = '#ffd700';
+      } else {
+        DOM.endRecordSub.textContent = '維持紀錄';
+        DOM.endRecordSub.style.color = '';
+      }
     } else {
-      DOM.endRecordSub.textContent = '維持紀錄';
-      DOM.endRecordSub.style.color = '';
+      DOM.endBestScore.textContent = `${formatNum(playerFinal)} 注`;
+      DOM.endRecordSub.textContent = '未能儲存本機紀錄';
+      DOM.endRecordSub.style.color = 'var(--text-muted)';
     }
 
     // Fill stats cards
@@ -657,6 +751,10 @@
     DOM.statHitPct.textContent = `勝率 ${(hit1x2Count / TOTAL_ROUNDS * 100).toFixed(1)}%`;
 
     DOM.statScoreHits.textContent = `${exactHitCount} / ${TOTAL_ROUNDS}`;
+    const bonusTotal = exactHitCount * EXACT_SCORE_BONUS;
+    if (DOM.statScoreBonusSub) {
+      DOM.statScoreBonusSub.textContent = exactHitCount > 0 ? `額外彩金 +${bonusTotal} 注` : '無額外彩金';
+    }
     DOM.statRoi.textContent = `${formatPL(roiPct)}%`;
 
     // Render 10-match Recap List
@@ -670,7 +768,7 @@
       row.className = 'recap-item';
 
       let pickDesc = `你揀：${outcomeLabels[r.playerPick]} (${r.playerOdds.toFixed(2)})`;
-      if (r.exactScoreActive) {
+      if (r.exactScoreActive && r.guessHome !== null && r.guessAway !== null) {
         pickDesc += ` · 波膽 ${r.guessHome}-${r.guessAway}`;
         if (r.isHitScore) pickDesc += ' 🎯中';
       }
@@ -707,29 +805,41 @@
     DOM.clearScoreBtn.addEventListener('click', clearExactScore);
 
     DOM.stepperHomeMinus.addEventListener('click', () => {
-      if (state.guessHome > 0) {
+      if (state.isRoundRevealed) return;
+      if (state.guessHome === null) {
+        state.guessHome = 0;
+      } else if (state.guessHome > 0) {
         state.guessHome--;
-        updateScoreDisplay();
       }
+      updateScoreDisplay();
     });
     DOM.stepperHomePlus.addEventListener('click', () => {
-      if (state.guessHome < 9) {
+      if (state.isRoundRevealed) return;
+      if (state.guessHome === null) {
+        state.guessHome = 1;
+      } else if (state.guessHome < 9) {
         state.guessHome++;
-        updateScoreDisplay();
       }
+      updateScoreDisplay();
     });
 
     DOM.stepperAwayMinus.addEventListener('click', () => {
-      if (state.guessAway > 0) {
+      if (state.isRoundRevealed) return;
+      if (state.guessAway === null) {
+        state.guessAway = 0;
+      } else if (state.guessAway > 0) {
         state.guessAway--;
-        updateScoreDisplay();
       }
+      updateScoreDisplay();
     });
     DOM.stepperAwayPlus.addEventListener('click', () => {
-      if (state.guessAway < 9) {
+      if (state.isRoundRevealed) return;
+      if (state.guessAway === null) {
+        state.guessAway = 1;
+      } else if (state.guessAway < 9) {
         state.guessAway++;
-        updateScoreDisplay();
       }
+      updateScoreDisplay();
     });
 
     // Reveal & Advance
@@ -742,46 +852,59 @@
       updateStartScreenBestScore();
       showScreen(DOM.startScreen);
     });
+    DOM.homeBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        DOM.homeBtn.click();
+      }
+    });
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      // Avoid firing if focus is inside an input (none currently, but good practice)
-      if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') return;
-
       const key = e.key.toUpperCase();
 
-      // In Game Screen
-      if (DOM.gameScreen.classList.contains('active')) {
-        if (!state.isRoundRevealed) {
-          if (key === '1') {
-            e.preventDefault();
-            handlePick('H');
-          } else if (key === 'X') {
-            e.preventDefault();
-            handlePick('D');
-          } else if (key === '2') {
-            e.preventDefault();
-            handlePick('A');
-          } else if (e.key === 'Enter' || e.key === ' ') {
+      // In Game Screen 1X2 quick shortcuts
+      if (DOM.gameScreen.classList.contains('active') && !state.isRoundRevealed) {
+        if (key === '1') {
+          e.preventDefault();
+          handlePick('H');
+          return;
+        } else if (key === 'X') {
+          e.preventDefault();
+          handlePick('D');
+          return;
+        } else if (key === '2') {
+          e.preventDefault();
+          handlePick('A');
+          return;
+        }
+      }
+
+      // If focused on other interactive controls (season radio, home button, steppers, toggle),
+      // let their own handlers run without being intercepted by global shortcuts.
+      const primaryCtas = ['start-game-btn', 'reveal-btn', 'next-round-btn', 'replay-btn'];
+      const isPrimaryCta = e.target && primaryCtas.includes(e.target.id);
+      const isOtherInteractive = e.target && e.target.closest('button, input, [role="radio"]') && !isPrimaryCta;
+      if (isOtherInteractive) {
+        return;
+      }
+
+      // Enter / Space shortcut when focus is on body / container or primary CTA
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (DOM.gameScreen.classList.contains('active')) {
+          if (!state.isRoundRevealed) {
             if (state.selectedPick) {
               e.preventDefault();
               revealRound();
             }
-          }
-        } else {
-          // Post reveal: advance
-          if (e.key === 'Enter' || e.key === ' ') {
+          } else {
             e.preventDefault();
             advanceNextRound();
           }
-        }
-      } else if (DOM.startScreen.classList.contains('active')) {
-        if (e.key === 'Enter' || e.key === ' ') {
+        } else if (DOM.startScreen.classList.contains('active')) {
           e.preventDefault();
           startNewGame();
-        }
-      } else if (DOM.endScreen.classList.contains('active')) {
-        if (e.key === 'Enter' || e.key === ' ') {
+        } else if (DOM.endScreen.classList.contains('active')) {
           e.preventDefault();
           startNewGame();
         }

@@ -30,7 +30,7 @@
   /* Text */
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-dim: #94a3b8;
   --text-gold: #fde047;
   
   /* Font Stack (system fonts, no external requests) */
@@ -50,6 +50,17 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .pulse-glow, .ball-icon, .revealed-score-box, .round-result-card {
+    animation: none !important;
+  }
 }
 
 html {
@@ -194,6 +205,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1.5px solid var(--accent-red);
+  color: #ffffff;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .stadium-badge {
@@ -868,12 +890,20 @@ body {
   font-weight: 700;
   color: var(--text-main);
   width: 100%;
+  position: relative;
 }
 
 .toggle-checkbox {
   position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
   opacity: 0;
-  pointer-events: none;
 }
 
 .toggle-switch-visual {
@@ -884,6 +914,11 @@ body {
   position: relative;
   transition: background 0.2s ease;
   flex-shrink: 0;
+}
+
+.toggle-checkbox:focus-visible + .toggle-switch-visual {
+  outline: 3px solid var(--gold-primary);
+  outline-offset: 3px;
 }
 
 .toggle-switch-visual::after {
@@ -919,6 +954,7 @@ body {
   padding-top: 10px;
   border-top: 1px dashed rgba(255, 255, 255, 0.1);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 14px;
@@ -1206,9 +1242,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 380px;
-  overflow-y: auto;
-  padding-right: 4px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 /* Custom Scrollbar */
@@ -1253,9 +1289,8 @@ body {
 .recap-fixture {
   font-weight: 800;
   color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .recap-fixture .ft-score {
@@ -1339,13 +1374,63 @@ button:focus-visible, input:focus-visible {
     min-height: 96px;
   }
   
+  /* Bookmaker bar stacking */
+  .bookmaker-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .margin-indicator {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .margin-indicator .margin-val {
+    white-space: nowrap;
+  }
+
+  /* Result comparison row stacking */
+  .result-comparison-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  /* Exact-score stepper wrapping & touch target */
+  .exact-score-steppers {
+    gap: 10px;
+  }
+
+  .clear-score-btn {
+    flex-basis: 100%;
+    margin-left: 0;
+    margin-top: 6px;
+    text-align: center;
+  }
+
   .stepper-btn {
-    width: 28px;
-    height: 28px;
-    font-size: 1rem;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 1.2rem;
   }
   
   .stepper-val {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+  }
+
+  /* Recap item wrap */
+  .recap-item {
+    grid-template-columns: auto 1fr;
+    row-gap: 6px;
+  }
+
+  .recap-pl-badge {
+    grid-column: 2;
+    justify-self: flex-start;
   }
 }
