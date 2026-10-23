@@ -127,6 +127,66 @@ async function run() {
     throw new Error('Start button should be enabled initially');
   }
 
+  console.log('\n--- Test 1b: Verify Touch Targets >= 44px on 390px Viewport ---');
+  // Reveal custom input to check its rendered height
+  await evaluate(`document.querySelector('#rounds-preset-container .chip-btn[data-rounds="custom"]').click();`);
+  await sleep(50);
+
+  const touchHeights = await evaluate(`
+    ({
+      customInput: document.getElementById('custom-rounds-input').offsetHeight,
+      dateInput: document.getElementById('date-from').offsetHeight,
+      clearAdvanced: document.getElementById('btn-clear-advanced').offsetHeight,
+      quickBtn: document.getElementById('btn-comp-all').offsetHeight,
+      chipBtn: document.querySelector('.chip-btn').offsetHeight,
+      segmentBtn: document.querySelector('.segment-btn').offsetHeight
+    })
+  `);
+  console.log('Touch target heights (px):', touchHeights);
+  for (const [key, height] of Object.entries(touchHeights)) {
+    if (height < 44) {
+      throw new Error(`Touch target ${key} height is ${height}px, which is below 44px!`);
+    }
+  }
+
+  // Restore 10 rounds preset
+  await evaluate(`document.querySelector('#rounds-preset-container .chip-btn[data-rounds="10"]').click();`);
+  await sleep(50);
+
+  console.log('\n--- Test 1c: Check Live Pool Count on Opening vs Closing Odds Mode ---');
+  // Switch to opening odds (初盤)
+  await evaluate(`document.querySelector('#odds-type-control .segment-btn[data-odds="opening"]').click();`);
+  await sleep(100);
+
+  const openingCount = await evaluate(`document.getElementById('live-pool-num').textContent`);
+  console.log('Opening odds live pool count:', openingCount);
+  if (openingCount !== '8,907') {
+    throw new Error(`Expected opening pool count 8,907 (excluded 2,280 cups & 1 Serie A row), but got ${openingCount}`);
+  }
+
+  const cupNoteText = await evaluate(`document.getElementById('cup-odds-note').textContent`);
+  const cupNoteDisplay = await evaluate(`document.getElementById('cup-odds-note').style.display`);
+  console.log('Cup note display:', cupNoteDisplay, 'text:', cupNoteText.trim());
+  if (cupNoteDisplay === 'none' || !cupNoteText.includes('無初盤賠率')) {
+    throw new Error('Cup note was not properly displayed for opening mode');
+  }
+
+  // Switch back to closing odds (終盤)
+  await evaluate(`document.querySelector('#odds-type-control .segment-btn[data-odds="closing"]').click();`);
+  await sleep(100);
+  const closingCount = await evaluate(`document.getElementById('live-pool-num').textContent`);
+  console.log('Closing odds live pool count:', closingCount);
+  if (closingCount !== '11,188') {
+    throw new Error(`Expected closing pool count 11,188 but got ${closingCount}`);
+  }
+
+  console.log('\n--- Test 1d: Custom Starting Bankroll Selection ---');
+  await evaluate(`document.querySelector('#bankroll-preset-container .chip-btn[data-bankroll="50"]').click();`);
+  await sleep(100);
+  // Restore to 100 注
+  await evaluate(`document.querySelector('#bankroll-preset-container .chip-btn[data-bankroll="100"]').click();`);
+  await sleep(100);
+
   console.log('\n--- Test 2: Switch Bet Mode to Asian Handicap (AH) ---');
   await evaluate(`
     const ahBtn = document.querySelector('#bet-mode-control .segment-btn[data-mode="ah"]');
@@ -231,6 +291,13 @@ async function run() {
     plusA.click(); // 1
   `);
   await sleep(100);
+
+  const stepperHeight = await evaluate(`document.getElementById('stepper-home-plus').offsetHeight`);
+  const clearScoreHeight = await evaluate(`document.getElementById('clear-score-btn').offsetHeight`);
+  console.log(`Stepper button height: ${stepperHeight}px, Clear score button height: ${clearScoreHeight}px`);
+  if (stepperHeight < 44 || clearScoreHeight < 44) {
+    throw new Error(`Stepper button or clear score button height < 44px (got ${stepperHeight}px, ${clearScoreHeight}px)`);
+  }
 
   // Reveal round 1
   await evaluate(`document.getElementById('reveal-btn').click();`);

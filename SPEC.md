@@ -8,7 +8,7 @@ Single-page browser game using REAL European football data (Premier League, La L
   - `data/{epl,laliga,seriea,bundesliga,ligue1,ucl,uel,uecl}.js`: Compact match arrays lazy-loaded dynamically via `<script>` tags. Total raw size < 1.5MB.
 - `team_names.py` — Cantonese translations (香港/澳門常用譯名) for all 277 teams across all 8 competitions.
 - `ah.js` — Pure function `settleAH(goalDiffForBackedSide, line, odds, stake)` implementing full, half, and quarter-ball Asian Handicap settlement rules (`win`, `halfwin`, `push`, `halfloss`, `loss`). Works in browser (`window.settleAH`) and Node.js (`module.exports`).
-- `tests/ah.test.js` — Automated unit test suite covering lines `0, ±0.25, ±0.5, ±0.75, ±1, ±1.25, -1.5, +2` for home and away sides.
+- `tests/ah.test.js` — Automated unit test suite covering lines `0, ±0.25, ±0.5, ±0.75, ±1, ±1.25, ±1.5, ±1.75, ±2, ±2.25`, non-10 stakes, even odds, and identity checks.
 - `index.html`, `style.css`, `game.js` — Complete game UI and logic in authentic Cantonese (廣東話).
 - `README.md` — Project documentation and run guide.
 
@@ -17,9 +17,9 @@ Single-page browser game using REAL European football data (Premier League, La L
    - **賽事選擇 (Competitions)**: 5 leagues + 3 cups with quick toggles (「全選」、「五大聯賽」、「歐洲賽」).
    - **賽季選擇 (Seasons)**: 2021/22 - 2025/26 individually selectable chips with 「全選 / 全部唔揀」 toggle.
    - **玩法模式 (Bet Mode)**: 1X2 (主/和/客) 或 亞洲盤 (Asian Handicap 讓球盤)。選擇亞洲盤時只挑選具備讓球盤數據嘅聯賽賽事。
-   - **盤口類型 (Odds Type)**: 初盤 (Opening) 或 終盤 (Closing)。歐洲賽僅設終盤1X2賠率。
+   - **盤口類型 (Odds Type)**: 初盤 (Opening) 或 終盤 (Closing)。初盤模式下自動排除無初盤數據場次（歐洲賽無初盤）。
    - **每局場數 (Rounds)**: 5 / 10 / 20 / 30 場及自訂數字 (1..可用場數)。
-   - **注碼與本金 (Stake & Bankroll)**: 每注 5 / 10 / 20 或自訂注碼，預設 100 注初始本金。
+   - **注碼與本金 (Stake & Bankroll)**: 初始本金可選 50 / 100 / 200 或自訂本金；每注 5 / 10 / 20 或自訂注碼。
    - **進階篩選 (Collapsible Advanced Filter)**: 摺疊面板，可輸入中文搜尋/指定球隊，以及指定比賽日期範圍。
    - **即時可用場數 (Live Pool Count)**: 「而家揀咗：N 場比賽可用」即時連動更新；若可用場數不足（或為 0）則停用開波按鈕並提示廣東話原因。
    - **歷史最高紀錄 (Best Record)**: 從 `localStorage`（`btb_best_v2`）讀取個人最高本金紀錄。
