@@ -942,6 +942,16 @@ body {
   transform: translateX(18px);
 }
 
+.toggle-checkbox:disabled + .toggle-switch-visual {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toggle-checkbox:disabled ~ .toggle-text {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .bonus-tag {
   color: var(--gold-primary);
   font-weight: 800;
@@ -1012,6 +1022,13 @@ body {
   transform: scale(0.95);
 }
 
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
+
 .stepper-val {
   font-size: 1.3rem;
   font-weight: 900;
@@ -1043,6 +1060,12 @@ body {
 .clear-score-btn:hover {
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+.clear-score-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Post Reveal Result Card */

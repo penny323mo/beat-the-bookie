@@ -178,6 +178,7 @@
     baselineBankroll: 100.0,
     isRoundRevealed: false,
     isAdvancing: false,
+    endScreenOpenedAt: 0,
     selectedPick: null, // 'H' | 'D' | 'A'
     exactScoreActive: false,
     guessHome: null,
@@ -294,7 +295,7 @@
     } else if (screenEl === DOM.gameScreen) {
       if (DOM.btnPickH) DOM.btnPickH.focus();
     } else if (screenEl === DOM.endScreen) {
-      if (DOM.replayBtn) DOM.replayBtn.focus();
+      if (DOM.verdictText) DOM.verdictText.focus();
     }
   }
 
@@ -363,6 +364,7 @@
     }
 
     if (!window.MATCHES || !Array.isArray(window.MATCHES) || window.MATCHES.length === 0) {
+      showScreen(DOM.startScreen);
       if (DOM.startErrorBanner) {
         DOM.startErrorBanner.textContent = '未載入比賽數據！請先執行 python3 build_data.py 生成 data.js。';
         DOM.startErrorBanner.style.display = 'block';
@@ -378,6 +380,7 @@
     }
 
     if (pool.length < TOTAL_ROUNDS) {
+      showScreen(DOM.startScreen);
       if (DOM.startErrorBanner) {
         DOM.startErrorBanner.textContent = '賽事池數量不足，無法開始。';
         DOM.startErrorBanner.style.display = 'block';
@@ -508,6 +511,7 @@
     const labelMap = { H: '主勝 (1)', D: '和局 (X)', A: '客勝 (2)' };
     DOM.revealBtn.disabled = false;
     DOM.revealBtnText.textContent = `確認下注【${labelMap[pick]}】· 揭曉賽果 📢`;
+    DOM.revealBtn.focus();
   }
 
   // --- Exact Score Stepper Handling ---
@@ -687,6 +691,7 @@
   // --- End Screen & Summary ---
   function showEndScreen() {
     state.isAdvancing = false;
+    state.endScreenOpenedAt = Date.now();
     showScreen(DOM.endScreen);
 
     const playerFinal = state.playerBankroll;
@@ -816,7 +821,7 @@
     DOM.stepperHomePlus.addEventListener('click', () => {
       if (state.isRoundRevealed) return;
       if (state.guessHome === null) {
-        state.guessHome = 1;
+        state.guessHome = 0;
       } else if (state.guessHome < 9) {
         state.guessHome++;
       }
@@ -835,7 +840,7 @@
     DOM.stepperAwayPlus.addEventListener('click', () => {
       if (state.isRoundRevealed) return;
       if (state.guessAway === null) {
-        state.guessAway = 1;
+        state.guessAway = 0;
       } else if (state.guessAway < 9) {
         state.guessAway++;
       }
@@ -847,20 +852,20 @@
     DOM.nextRoundBtn.addEventListener('click', advanceNextRound);
 
     // End Actions
-    DOM.replayBtn.addEventListener('click', startNewGame);
+    DOM.replayBtn.addEventListener('click', () => {
+      if (Date.now() - state.endScreenOpenedAt < 500) return;
+      startNewGame();
+    });
     DOM.homeBtn.addEventListener('click', () => {
       updateStartScreenBestScore();
       showScreen(DOM.startScreen);
     });
-    DOM.homeBtn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        DOM.homeBtn.click();
-      }
-    });
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
+      // Ignore key repeat to prevent unintended double activation
+      if (e.repeat) return;
+
       const key = e.key.toUpperCase();
 
       // In Game Screen 1X2 quick shortcuts
@@ -880,11 +885,12 @@
         }
       }
 
-      // If focused on other interactive controls (season radio, home button, steppers, toggle),
-      // let their own handlers run without being intercepted by global shortcuts.
+      // Check target element safely (handling cases where target is document or window)
+      const targetEl = (e.target && e.target.nodeType === 1) ? e.target : null;
       const primaryCtas = ['start-game-btn', 'reveal-btn', 'next-round-btn', 'replay-btn'];
-      const isPrimaryCta = e.target && primaryCtas.includes(e.target.id);
-      const isOtherInteractive = e.target && e.target.closest('button, input, [role="radio"]') && !isPrimaryCta;
+      const isOddsBtn = targetEl && targetEl.closest('.odds-choice-btn');
+      const isPrimaryCta = targetEl && (primaryCtas.includes(targetEl.id) || (isOddsBtn && state.selectedPick !== null));
+      const isOtherInteractive = targetEl && targetEl.closest('button, input, [role="radio"]') && !isPrimaryCta;
       if (isOtherInteractive) {
         return;
       }
@@ -905,6 +911,8 @@
           e.preventDefault();
           startNewGame();
         } else if (DOM.endScreen.classList.contains('active')) {
+          // Guard against accidental skip immediately after end screen opens
+          if (Date.now() - state.endScreenOpenedAt < 500) return;
           e.preventDefault();
           startNewGame();
         }
