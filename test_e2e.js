@@ -36,11 +36,17 @@ function evaluate(expression) {
     });
 }
 
-async function captureScreenshot(filename) {
+async function captureScreenshot(targetPath) {
+  const fullPath = path.isAbsolute(targetPath)
+    ? targetPath
+    : (targetPath.startsWith('screenshots')
+      ? path.resolve(__dirname, targetPath)
+      : path.join(SCREENSHOTS_DIR, targetPath));
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
   const res = await cdpSend('Page.captureScreenshot', { format: 'png' });
   const buffer = Buffer.from(res.data, 'base64');
-  fs.writeFileSync(path.join(SCREENSHOTS_DIR, filename), buffer);
-  console.log(`📸 Saved screenshot: ${filename}`);
+  fs.writeFileSync(fullPath, buffer);
+  console.log(`📸 Saved screenshot: ${targetPath}`);
 }
 
 async function sleep(ms) {
@@ -419,6 +425,46 @@ async function run() {
 
   const ahVerdict = await evaluate(`document.getElementById('verdict-text').textContent`);
   console.log('AH End Screen Verdict:', ahVerdict);
+
+  console.log('\n--- Test 6: Verify End Screen Loss Verdict & Penny Bug Scenario ---');
+  await evaluate(`
+    const { state, showEndScreen } = window.__BTB_TEST__;
+    state.startingBankroll = 100;
+    state.playerBankroll = 96.4;
+    state.baselineBankroll = 94.6;
+    showEndScreen();
+  `);
+  await sleep(300);
+
+  const lossVerdict = await evaluate(`document.getElementById('verdict-text').textContent`);
+  const lossSubtitle = await evaluate(`document.getElementById('verdict-subtitle').textContent`);
+  const lossBookiePnl = await evaluate(`document.getElementById('bookie-pnl-text').textContent`);
+  const lossBannerClass = await evaluate(`document.getElementById('verdict-banner').className`);
+  const lossBookieBannerClass = await evaluate(`document.getElementById('bookie-pnl-banner').className`);
+
+  console.log('Loss Verdict Title:', lossVerdict);
+  console.log('Loss Verdict Subtitle:', lossSubtitle);
+  console.log('Loss Bookie PnL:', lossBookiePnl);
+  console.log('Loss Banner Class:', lossBannerClass);
+
+  if (lossVerdict !== '輸給莊家') {
+    throw new Error(`Expected verdict title "輸給莊家", got "${lossVerdict}"`);
+  }
+  if (!lossBannerClass.includes('loss')) {
+    throw new Error(`Expected verdict banner to have class 'loss', got "${lossBannerClass}"`);
+  }
+  if (!lossBookieBannerClass.includes('loss')) {
+    throw new Error(`Expected bookie PnL banner to have class 'loss', got "${lossBookieBannerClass}"`);
+  }
+  if (!lossSubtitle.includes('但你贏咗電腦對手 1.8 注')) {
+    throw new Error(`Expected subtitle to contain "但你贏咗電腦對手 1.8 注", got "${lossSubtitle}"`);
+  }
+  if (!lossBookiePnl.includes('莊家今局喺你身上贏咗 3.6 注')) {
+    throw new Error(`Expected bookie PnL "莊家今局喺你身上贏咗 3.6 注", got "${lossBookiePnl}"`);
+  }
+
+  // 390px screenshot of the losing end screen
+  await captureScreenshot('screenshots/v2-390/test_end_screen_loss.png');
 
   console.log('\n--- Checking for Console Errors ---');
   if (consoleErrors.length > 0) {

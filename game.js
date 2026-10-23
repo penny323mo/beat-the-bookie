@@ -188,10 +188,11 @@
     return null;
   }
 
-  function saveBestScore(score) {
+  function saveBestScore(score, startingBankroll = 100) {
     try {
       const cur = getBestScore();
-      if (cur === null || score > cur) {
+      // Only record a new high score if it is profitable (> startingBankroll) AND beats previous best
+      if (score > startingBankroll && (cur === null || score > cur)) {
         localStorage.setItem(STORAGE_KEY, score.toFixed(1));
         return true;
       }
@@ -468,6 +469,9 @@
       endTrophyBadge: document.getElementById('end-trophy-badge'),
       verdictBanner: document.getElementById('verdict-banner'),
       verdictText: document.getElementById('verdict-text'),
+      verdictSubtitle: document.getElementById('verdict-subtitle'),
+      bookiePnlBanner: document.getElementById('bookie-pnl-banner'),
+      bookiePnlText: document.getElementById('bookie-pnl-text'),
       verdictDetail: document.getElementById('verdict-detail'),
       statFinalBankroll: document.getElementById('stat-final-bankroll'),
       statNetPl: document.getElementById('stat-net-pl'),
@@ -1709,33 +1713,40 @@
 
     DOM.endTitleText.textContent = `${state.roundsCount} 場激戰結束！`;
 
-    // Verdict determination
-    DOM.verdictBanner.className = 'verdict-banner';
-    if (playerFinal > baselineFinal) {
-      DOM.endTrophyBadge.textContent = '🏆';
-      DOM.verdictBanner.classList.add('win');
-      DOM.verdictText.textContent = '贏咗莊家！';
-      DOM.verdictDetail.textContent = '犀利！你嘅眼光同投注策略成功壓倒盲跟熱門嘅 AI，打破莊家抽水定律！';
-    } else if (playerFinal < baselineFinal) {
-      DOM.endTrophyBadge.textContent = '📉';
-      DOM.verdictBanner.classList.add('loss');
-      DOM.verdictText.textContent = '輸畀莊家！';
-      DOM.verdictDetail.textContent = '今局盲跟熱門策略稍勝一籌，莊家抽水依然強橫，收拾心情再戰一回！';
-    } else {
-      DOM.endTrophyBadge.textContent = '🤝';
-      DOM.verdictBanner.classList.add('draw');
-      DOM.verdictText.textContent = '打和！平分秋色！';
-      DOM.verdictDetail.textContent = '同跟莊熱門 AI 最終本金相同，不分勝負！';
+    // Verdict determination via pure function (verdict.js)
+    const v = (typeof window.calculateVerdict === 'function')
+      ? window.calculateVerdict(playerFinal, baselineFinal, initial)
+      : {
+          title: netPL > 0 ? '贏咗莊家！' : (netPL < 0 ? '輸給莊家' : '打和 / 保本'),
+          subtitle: '',
+          detail: '',
+          bookiePnlText: '',
+          statusClass: netPL > 0 ? 'win' : (netPL < 0 ? 'loss' : 'draw'),
+          trophy: netPL > 0 ? '🏆' : (netPL < 0 ? '📉' : '🤝')
+        };
+
+    DOM.endTrophyBadge.textContent = v.trophy;
+    DOM.verdictBanner.className = `verdict-banner ${v.statusClass}`;
+    DOM.verdictText.textContent = v.title;
+    if (DOM.verdictSubtitle) {
+      DOM.verdictSubtitle.textContent = v.subtitle;
     }
+    if (DOM.bookiePnlBanner) {
+      DOM.bookiePnlBanner.className = `bookie-pnl-banner ${v.statusClass}`;
+    }
+    if (DOM.bookiePnlText) {
+      DOM.bookiePnlText.textContent = v.bookiePnlText;
+    }
+    DOM.verdictDetail.textContent = v.detail;
 
     // Best Score Handling
     const previousBest = getBestScore();
-    const isNewRecord = saveBestScore(playerFinal);
+    const isNewRecord = saveBestScore(playerFinal, initial);
     const currentBest = getBestScore();
 
     if (currentBest !== null) {
       DOM.endBestScore.textContent = `${formatNum(currentBest)} 注`;
-      if (isNewRecord && (previousBest === null || playerFinal > previousBest)) {
+      if (isNewRecord) {
         DOM.endRecordSub.textContent = '🎉 刷新個人最高紀錄！';
         DOM.endRecordSub.style.color = '#ffd700';
       } else {
@@ -1743,8 +1754,9 @@
         DOM.endRecordSub.style.color = '';
       }
     } else {
-      DOM.endBestScore.textContent = `${formatNum(playerFinal)} 注`;
-      DOM.endRecordSub.textContent = '未能儲存本機紀錄';
+      DOM.endBestScore.textContent = '暫無盈利紀錄';
+      DOM.endRecordSub.textContent = playerFinal <= initial ? '今局未達盈利門檻' : '未能儲存本機紀錄';
+      DOM.endRecordSub.style.color = '';
     }
 
     // Fill Stat Cards
@@ -1946,5 +1958,8 @@
     initDOMElements();
     initStartScreen();
     setupEvents();
+    if (typeof window !== 'undefined') {
+      window.__BTB_TEST__ = { state, DOM, showEndScreen, formatNum, formatPL };
+    }
   });
 })();
