@@ -1,0 +1,6 @@
+# Serve only the game files on Vercel
+*
+!index.html
+!game.js
+!style.css
+!data.js
