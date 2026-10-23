@@ -1,0 +1,26 @@
+UPGRADE TASK (v2) for the Beat the Bookie game in this folder. Read SPEC.md, README.md, game.js, index.html, style.css, build_data.py first. Then implement everything below. Write all player-facing text in Cantonese (廣東話, Traditional Chinese, e.g. 嘅/咗/唔). Mobile-first: it is played on iPhone Safari (390px). Keep all existing features (bookie margin display, fair probability, exact-score bonus, AI opponent that backs the favourite, best score in localStorage, keyboard shortcuts, offline double-click must still work -> load data via <script> tags, NOT fetch()).
+
+DATA (raw/ folder, see raw/SOURCES.md; never invent data):
+1. Leagues: raw/{E0,SP1,I1,D1,F1}_{2122,2223,2324,2425,2526}.csv from football-data.co.uk (EPL, La Liga, Serie A, Bundesliga, Ligue 1, seasons 2021/22-2025/26). Use per match: date, home, away, FTHG, FTAG, FTR, HTHG/HTAG; opening 1X2 = B365H/D/A (fallback AvgH/D/A, then PSH/D/A); closing 1X2 = B365CH/CD/CA (fallback AvgCH.., PSCH..); opening Asian handicap = AHh line + B365AHH/B365AHA (fallback AvgAHH/AvgAHA); closing AH = AHCh + B365CAHH/B365CAHA (fallback AvgCAHH/AvgCAHA). Skip missing fields (store null), never fabricate. Note which bookmaker was used.
+2. Cups: raw/footiqo_europe-{champions,europa,conference}-league.json (Champions League, Europa League, Conference League). Join res+odds tables on `id`; keep seasons 2021/2022-2025/2026 only. Only CLOSING 1X2 exists (1xBet). No opening odds, no Asian handicap -> those features must be hidden/disabled for cup matches with a short Cantonese note (e.g. 「歐洲賽只有終盤1X2賠率」).
+3. Rewrite build_data.py to produce LEAN data: one JS file per competition, e.g. data/epl.js, data/laliga.js, data/seriea.js, data/bundesliga.js, data/ligue1.js, data/ucl.js, data/uel.js, data/uecl.js, each doing `window.BTB_DATA=window.BTB_DATA||{}; window.BTB_DATA.epl={teams:[...],m:[[...],...]}` with compact arrays (team index ints, date as yyyymmdd int, odds rounded to 2dp, nulls for missing), only needed fields. Lazy-load: inject <script src> only for competitions the player selects (works on file:// too). Also data/meta.js with competitions, seasons and match counts. Print a table of match counts per competition+season and file sizes. Target: total under ~1.5MB raw, each file as small as practical.
+4. Team names in Cantonese (香港/澳門常用譯名) for ALL teams in all competitions (cups have many smaller clubs: give a sensible Cantonese name; if truly unknown keep English). Put the mapping in team_names.py or a JSON used by build_data.py.
+
+GAME OPTIONS (setup screen, mobile-friendly):
+- Competitions multi-select (5 leagues + 3 cups, with 全選 / 五大聯賽 / 歐洲賽 quick buttons).
+- Seasons multi-select (2021/22 ... 2025/26) or range.
+- Number of matches per game: 5/10/20/30 + custom number (validate 1..available).
+- Stake per bet (e.g. 5/10/20/custom) and starting bankroll; odds type to bet at: opening (初盤) or closing (終盤) where available.
+- Bet mode: 1X2 (主/和/客) or Asian handicap (亞洲盤) — AH only on league matches with AH data; skip/disable for others.
+- Per match show opening vs closing 1X2 odds and movement (arrow + % change, e.g. 升/跌), and AH opening line+odds vs closing line+odds and the line movement.
+
+ASIAN HANDICAP SETTLEMENT (put in a pure function in a separate file ah.js, e.g. settleAH(goalDiffForBackedSide, line, odds, stake) -> {profit, outcome:'win'|'halfwin'|'push'|'halfloss'|'loss'}). football-data AHh is the handicap applied to the HOME team (e.g. -0.75 means home gives 0.75). Backing away uses line = -AHh. Quarter lines (x.25/x.75) split stake in two halves on the two adjacent lines (e.g. -0.75 = half on -0.5, half on -1.0). Whole lines can push (stake refunded, profit 0). Half win = +stake/2*(odds-1); half loss = -stake/2. Odds are decimal. Add unit tests in tests/ah.test.js runnable with `node tests/ah.test.js` (no deps) covering 0, ±0.25, ±0.5, ±0.75, ±1, ±1.25, -1.5, +2 lines with all outcomes, home and away sides. Run them and make them pass.
+
+Update SPEC.md and README.md, update .vercelignore so only index.html, game.js, ah.js, style.css and data/*.js are deployed (remove old data.js if no longer used). Do not git commit. When done, write a summary to reviews/v2-round-0-agy.md (what you did, counts table, file sizes, test results).
+
+SETUP SCREEN REQUIREMENTS (confirmed by the player):
+- Seasons: each season individually selectable (checkbox chips) + 全選/全部唔揀 toggle.
+- Competitions: multi-select chips.
+- Matches per game: presets 5/10/20/30 + custom number input.
+- Optional filters (collapsible 「進階篩選」): team filter (search/select a team, Cantonese names) and date range (from/to). 
+- Live count 「而家揀咗：N 場比賽可用」 that updates on every change; disable the start button with a Cantonese reason when the pool is smaller than the chosen match count (or 0). In AH mode count only matches with AH data. Mobile-friendly, big tap targets.

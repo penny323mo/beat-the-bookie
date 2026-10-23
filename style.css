@@ -297,60 +297,383 @@ body {
   font-size: 0.78rem;
 }
 
-/* Season Section */
-.season-section {
+/* Setup Controls Container (v2) */
+.setup-controls-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
-.setting-label {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.season-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+.setup-group {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.season-btn {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-md);
-  padding: 10px 6px;
-  color: var(--text-muted);
-  cursor: pointer;
+.setup-group-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.season-btn:hover {
+.setting-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-btn {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: var(--gold-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
 }
 
-.season-btn.active {
-  background: var(--surface-selected);
+.quick-btn:hover {
+  background: rgba(255, 215, 0, 0.15);
   border-color: var(--gold-primary);
-  box-shadow: 0 0 12px var(--gold-glow);
   color: #ffffff;
 }
 
-.season-btn .btn-primary-text {
+.quick-btn:active {
+  transform: scale(0.96);
+}
+
+/* Chip Grid for Competitions & Seasons */
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-grid.compact {
+  gap: 6px;
+}
+
+.chip-btn {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  flex: 1 1 auto;
+}
+
+.chip-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.chip-btn.active {
+  background: var(--surface-selected);
+  border-color: var(--gold-primary);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* Dual Column Layout */
+.setup-row-dual {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 600px) {
+  .setup-row-dual {
+    flex-direction: row;
+    gap: 16px;
+  }
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* Segmented Control (1X2 vs AH, Closing vs Opening) */
+.segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 4px;
+}
+
+.segment-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-md) - 3px);
+  color: var(--text-muted);
+  font-family: inherit;
   font-size: 0.88rem;
+  font-weight: 700;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.segment-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.segment-btn.active {
+  background: var(--surface-selected);
+  color: var(--gold-primary);
+  border: 1px solid var(--gold-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.setup-hint-note {
+  font-size: 0.78rem;
+  color: var(--gold-dark);
+  line-height: 1.4;
+  padding: 4px 6px;
+}
+
+/* Custom numeric input wraps */
+.custom-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-top: 4px;
+}
+
+.custom-input-wrap label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.custom-input-wrap input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  min-height: 44px;
+}
+
+/* Collapsible Advanced Filter */
+.advanced-filter-card {
+  background: rgba(0, 0, 0, 0.32);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.advanced-filter-card[open] {
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.advanced-filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+  min-height: 46px;
+}
+
+.advanced-filter-summary:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.summary-title {
+  flex: 1;
+}
+
+.summary-arrow {
+  color: var(--gold-primary);
+  font-size: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.advanced-filter-card[open] .summary-arrow {
+  transform: rotate(180deg);
+}
+
+.advanced-filter-body {
+  padding: 12px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.filter-input, .filter-select {
+  width: 100%;
+  background: rgba(10, 25, 15, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  min-height: 44px;
+}
+
+.filter-select option {
+  background: #112819;
+  color: #ffffff;
+}
+
+.date-inputs-row {
+  display: flex;
+  gap: 10px;
+}
+
+.date-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.date-input {
+  flex: 1;
+  background: rgba(10, 25, 15, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  min-height: 44px;
+}
+
+.filter-actions-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-text-action {
+  background: transparent;
+  border: none;
+  color: var(--accent-neon-green);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 12px;
+  text-decoration: underline;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-text-action:hover {
+  color: #ffffff;
+}
+
+/* Live Match Pool Banner */
+.live-pool-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 0, 0, 0.4));
+  border: 1.5px solid rgba(56, 239, 125, 0.4);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.pool-count-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
   font-weight: 700;
 }
 
-.season-btn .btn-sub-text {
-  font-size: 0.72rem;
-  opacity: 0.8;
+.pool-num {
+  font-size: 1.3rem;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  color: var(--accent-neon-green);
+}
+
+.pool-warning-box {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1.5px solid var(--accent-red);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 /* Best Record Banner */
@@ -501,6 +824,30 @@ body {
   color: var(--text-muted);
   font-size: 0.82rem;
   font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hud-comp-badge {
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--gold-primary);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.hud-mode-badge {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .bankroll-comparison {
@@ -584,7 +931,89 @@ body {
   padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+}
+
+/* Arena Top Utility Bar: Reroll Match */
+.arena-utility-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: -2px;
+  position: relative;
+  z-index: 2;
+}
+
+.reroll-btn {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.reroll-btn:hover:not(:disabled) {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
+  transform: translateY(-1px);
+}
+
+.reroll-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.reroll-btn:disabled {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.reroll-count-pill {
+  background: rgba(255, 215, 0, 0.2);
+  color: var(--gold-primary);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.reroll-btn:disabled .reroll-count-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.reroll-hint {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reroll-hint kbd {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  color: var(--gold-primary);
 }
 
 /* Teams Board */
@@ -705,16 +1134,26 @@ body {
   color: #0f172a;
 }
 
-/* Bookmaker Margin Bar */
-.bookmaker-bar {
+/* Market Analysis & Odds Movement Panel (v2) */
+.market-analysis-card {
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.market-top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 0.82rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 6px;
 }
 
 .margin-indicator {
@@ -742,11 +1181,132 @@ body {
   color: #ffffff;
 }
 
+/* Odds Movement Board */
+.odds-movement-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.movement-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.movement-items-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.movement-item {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.mov-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.mov-flow {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.mov-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+}
+
+.mov-badge.rise {
+  background: rgba(56, 239, 125, 0.2);
+  color: var(--accent-neon-green);
+  border: 1px solid rgba(56, 239, 125, 0.4);
+}
+
+.mov-badge.drop {
+  background: rgba(255, 71, 87, 0.2);
+  color: var(--accent-red);
+  border: 1px solid rgba(255, 71, 87, 0.4);
+}
+
+.mov-badge.flat {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+}
+
+/* AH Movement Text & Badge */
+.ah-movement-flow {
+  font-size: 0.8rem;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ah-line-shift-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gold-primary);
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.cup-odds-badge {
+  font-size: 0.78rem;
+  color: var(--accent-blue);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
 /* Odds Choices 1X2 Grid */
 .odds-board {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+}
+
+/* Asian Handicap Choices 2-col Grid */
+.ah-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ah-choice-btn {
+  min-height: 110px;
+}
+
+.ah-line-display {
+  font-size: 1.15rem;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  color: var(--gold-primary);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
 }
 
 .odds-choice-btn {
@@ -997,13 +1557,15 @@ body {
 }
 
 .stepper-btn {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 800;
   cursor: pointer;
   display: flex;
@@ -1048,13 +1610,17 @@ body {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: var(--text-dim);
-  font-size: 0.72rem;
-  padding: 6px 10px;
+  font-size: 0.78rem;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   align-self: center;
   margin-left: 4px;
   font-family: inherit;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .clear-score-btn:hover {
@@ -1370,8 +1936,8 @@ button:focus-visible, input:focus-visible {
   outline-offset: 2px !important;
 }
 
-/* Mobile Screen Tuning (< 380px) */
-@media (max-width: 380px) {
+/* Mobile Screen Tuning (< 420px, including iPhone Safari 390px) */
+@media (max-width: 420px) {
   .app-container {
     padding: 8px 8px 20px;
   }
@@ -1379,9 +1945,21 @@ button:focus-visible, input:focus-visible {
   .game-title {
     font-size: 1.35rem;
   }
+
+  .chip-btn {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
+
+  .segment-btn {
+    padding: 8px 4px;
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
   
   .team-name-zh {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
   }
   
   .choice-odds {
@@ -1396,9 +1974,13 @@ button:focus-visible, input:focus-visible {
     padding: 8px 4px;
     min-height: 96px;
   }
+
+  .ah-line-display {
+    font-size: 1.05rem;
+  }
   
-  /* Bookmaker bar stacking */
-  .bookmaker-bar {
+  /* Market top row stacking */
+  .market-top-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
@@ -1435,11 +2017,11 @@ button:focus-visible, input:focus-visible {
   }
 
   .stepper-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
-    font-size: 1.2rem;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.25rem;
   }
   
   .stepper-val {
@@ -1457,3 +2039,4 @@ button:focus-visible, input:focus-visible {
     justify-self: flex-start;
   }
 }
+

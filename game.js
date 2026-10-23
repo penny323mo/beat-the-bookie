@@ -1,58 +1,103 @@
 /**
- * 你估得贏莊家嗎？ (Beat the Bookie) - Game Logic
- * Pure vanilla JavaScript. Zero dependencies, file:// safe, zero network calls.
+ * 你估得贏莊家嗎？ (Beat the Bookie v2) - Game Logic
+ * Pure vanilla JavaScript. Zero external dependencies, offline file:// safe.
+ * Features:
+ * - 8 Competitions (EPL, La Liga, Serie A, Bundesliga, Ligue 1, UCL, UEL, UECL)
+ * - 5 Seasons (2021/22 - 2025/26)
+ * - 1X2 & Asian Handicap (AH) betting modes
+ * - Opening vs Closing odds with movement arrows and percentage change
+ * - Lean lazy-loading via dynamic <script> tags (zero fetch/XHR)
+ * - AI opponent that backs the favourite
+ * - Margin-removed fair implied probability
+ * - Exact score bonus (+20 units)
+ * - LocalStorage best score persistence
+ * - Keyboard shortcuts (1, X, 2, Space, Enter)
+ * - All UI in authentic Cantonese (廣東話)
  */
 
 (function () {
   'use strict';
 
-  // --- Team Translations & Visual Configuration ---
-  const TEAMS = {
-    'Real Madrid': { zh: '皇家馬德里', en: 'Real Madrid', primary: '#ffffff', secondary: '#dab042' },
-    'Barcelona': { zh: '巴塞隆拿', en: 'Barcelona', primary: '#a50044', secondary: '#004d98' },
-    'Ath Madrid': { zh: '馬德里體育會', en: 'Ath Madrid', primary: '#cb3524', secondary: '#272e61' },
-    'Ath Bilbao': { zh: '畢爾包', en: 'Ath Bilbao', primary: '#ee2524', secondary: '#1b1b1b' },
-    'Sociedad': { zh: '皇家蘇斯達', en: 'Sociedad', primary: '#0067b1', secondary: '#ffffff' },
-    'Villarreal': { zh: '維拉利爾', en: 'Villarreal', primary: '#ffd200', secondary: '#003865' },
-    'Betis': { zh: '貝迪斯', en: 'Betis', primary: '#00954c', secondary: '#ffffff' },
-    'Sevilla': { zh: '西維爾', en: 'Sevilla', primary: '#d40f1d', secondary: '#ffffff' },
-    'Valencia': { zh: '華倫西亞', en: 'Valencia', primary: '#ff6900', secondary: '#1a1a1a' },
-    'Celta': { zh: '切爾達', en: 'Celta', primary: '#7ab2e1', secondary: '#ffffff' },
-    'Getafe': { zh: '赫塔菲', en: 'Getafe', primary: '#005ca9', secondary: '#ffffff' },
-    'Girona': { zh: '基羅納', en: 'Girona', primary: '#ce1126', secondary: '#ffffff' },
-    'Osasuna': { zh: '奧沙辛拿', en: 'Osasuna', primary: '#c01524', secondary: '#0a1c3d' },
-    'Mallorca': { zh: '馬略卡', en: 'Mallorca', primary: '#e20613', secondary: '#111111' },
-    'Alaves': { zh: '艾拉維斯', en: 'Alaves', primary: '#005ba9', secondary: '#ffffff' },
-    'Espanol': { zh: '愛斯賓奴', en: 'Espanol', primary: '#007fc8', secondary: '#ffffff' },
-    'Vallecano': { zh: '華歷簡奴', en: 'Vallecano', primary: '#ffffff', secondary: '#d40f1d' },
-    'Levante': { zh: '利雲特', en: 'Levante', primary: '#7b112d', secondary: '#004b87' },
-    'Elche': { zh: '艾爾切', en: 'Elche', primary: '#006341', secondary: '#ffffff' },
-    'Oviedo': { zh: '奧維亞度', en: 'Oviedo', primary: '#003366', secondary: '#ffffff' },
-    'Las Palmas': { zh: '拉斯彭馬斯', en: 'Las Palmas', primary: '#ffd400', secondary: '#00509d' },
-    'Leganes': { zh: '雷加利斯', en: 'Leganes', primary: '#005ca9', secondary: '#ffffff' },
-    'Valladolid': { zh: '華拉度列', en: 'Valladolid', primary: '#532e85', secondary: '#ffffff' }
+  // --- Visual Configuration & Crest Generation ---
+  // Palette for popular clubs; other clubs get a deterministic vibrant palette based on name hash
+  const CLUB_PALETTES = {
+    // EPL
+    'Arsenal': { primary: '#ef0107', secondary: '#ffffff' },
+    'Aston Villa': { primary: '#95bfe5', secondary: '#670e36' },
+    'Chelsea': { primary: '#034694', secondary: '#ffffff' },
+    'Liverpool': { primary: '#c8102e', secondary: '#00b2a9' },
+    'Man City': { primary: '#6cabdd', secondary: '#1c2c5b' },
+    'Manchester City': { primary: '#6cabdd', secondary: '#1c2c5b' },
+    'Man United': { primary: '#da291c', secondary: '#fbe122' },
+    'Manchester Utd': { primary: '#da291c', secondary: '#fbe122' },
+    'Newcastle': { primary: '#241f20', secondary: '#ffffff' },
+    'Tottenham': { primary: '#132257', secondary: '#ffffff' },
+    // La Liga
+    'Real Madrid': { primary: '#ffffff', secondary: '#dab042' },
+    'Barcelona': { primary: '#a50044', secondary: '#004d98' },
+    'Ath Madrid': { primary: '#cb3524', secondary: '#272e61' },
+    'Atl. Madrid': { primary: '#cb3524', secondary: '#272e61' },
+    'Ath Bilbao': { primary: '#ee2524', secondary: '#1b1b1b' },
+    'Sociedad': { primary: '#0067b1', secondary: '#ffffff' },
+    'Real Sociedad': { primary: '#0067b1', secondary: '#ffffff' },
+    'Villarreal': { primary: '#ffd200', secondary: '#003865' },
+    'Betis': { primary: '#00954c', secondary: '#ffffff' },
+    'Sevilla': { primary: '#d40f1d', secondary: '#ffffff' },
+    // Serie A
+    'AC Milan': { primary: '#fb090b', secondary: '#000000' },
+    'Milan': { primary: '#fb090b', secondary: '#000000' },
+    'Inter': { primary: '#010e80', secondary: '#000000' },
+    'Juventus': { primary: '#ffffff', secondary: '#000000' },
+    'Roma': { primary: '#8e1f2f', secondary: '#f0bc42' },
+    'AS Roma': { primary: '#8e1f2f', secondary: '#f0bc42' },
+    'Napoli': { primary: '#12a0d7', secondary: '#ffffff' },
+    // Bundesliga
+    'Bayern Munich': { primary: '#dc052d', secondary: '#0066b2' },
+    'Dortmund': { primary: '#fde100', secondary: '#000000' },
+    'Leverkusen': { primary: '#e32221', secondary: '#000000' },
+    'Bayer Leverkusen': { primary: '#e32221', secondary: '#000000' },
+    'RB Leipzig': { primary: '#ffffff', secondary: '#dd0741' },
+    // Ligue 1
+    'PSG': { primary: '#004170', secondary: '#da291c' },
+    'Paris SG': { primary: '#004170', secondary: '#da291c' },
+    'Marseille': { primary: '#2faee0', secondary: '#ffffff' },
+    'Monaco': { primary: '#e51b24', secondary: '#ffffff' },
+    'Lyon': { primary: '#1d428a', secondary: '#da291c' }
   };
 
-  function getTeamInfo(name) {
-    if (TEAMS[name]) return TEAMS[name];
+  function getDeterministicColors(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h1 = Math.abs(hash) % 360;
+    const h2 = (h1 + 45) % 360;
     return {
-      zh: name,
-      en: name,
-      primary: '#1f4a32',
-      secondary: '#ffd700'
+      primary: `hsl(${h1}, 70%, 45%)`,
+      secondary: `hsl(${h2}, 85%, 65%)`
     };
   }
 
-  function sanitizeTeamKey(name) {
-    return name.replace(/[^a-zA-Z0-9]/g, '_');
+  function getTeamColors(teamName, enName) {
+    if (enName && CLUB_PALETTES[enName]) {
+      return CLUB_PALETTES[enName];
+    }
+    if (teamName && CLUB_PALETTES[teamName]) {
+      return CLUB_PALETTES[teamName];
+    }
+    return getDeterministicColors(enName || teamName);
   }
 
-  function createTeamCrestSVG(teamName) {
-    const info = getTeamInfo(teamName);
-    const idKey = sanitizeTeamKey(teamName);
-    const initials = info.en.substring(0, 3).toUpperCase();
-    const c1 = info.primary;
-    const c2 = info.secondary;
+  function sanitizeKey(str) {
+    return String(str).replace(/[^a-zA-Z0-9]/g, '_');
+  }
+
+  function createTeamCrestSVG(teamName, enName) {
+    const colors = getTeamColors(teamName, enName);
+    const idKey = sanitizeKey(enName || teamName);
+    const initials = (enName || teamName).substring(0, 3).toUpperCase();
+    const c1 = colors.primary;
+    const c2 = colors.secondary;
 
     return `
       <svg class="team-crest-svg" viewBox="0 0 48 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -64,7 +109,7 @@
         <path d="M24 2 C38 2 46 8 46 22 C46 38 24 52 24 52 C24 52 2 38 2 22 C2 8 10 2 24 2 Z" fill="${c1}" stroke="#ffd700" stroke-width="2.5"/>
         <g clip-path="url(#crest-clip-${idKey})">
           <path d="M0 0 L48 54 L48 0 Z" fill="${c2}" opacity="0.85"/>
-          <circle cx="24" cy="24" r="14" fill="rgba(10, 25, 15, 0.6)" stroke="#ffd700" stroke-width="1.2"/>
+          <circle cx="24" cy="24" r="14" fill="rgba(10, 25, 15, 0.65)" stroke="#ffd700" stroke-width="1.2"/>
           <text x="24" y="28" text-anchor="middle" font-size="9" font-weight="900" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" letter-spacing="0.5">${initials}</text>
         </g>
       </svg>
@@ -72,35 +117,27 @@
   }
 
   // --- Odds & Margin Mathematics ---
-  /**
-   * Margin-removed implied probabilities:
-   * r_i = 1 / o_i
-   * S = r_H + r_D + r_A (overround)
-   * margin % = (S - 1) * 100
-   * p_i = (r_i / S) * 100
-   */
-  function calculateOddsMath(odds) {
-    const rH = 1 / odds.h;
-    const rD = 1 / odds.d;
-    const rA = 1 / odds.a;
+  function calculateOddsMath(h, d, a) {
+    if (!h || !d || !a || h <= 0 || d <= 0 || a <= 0) {
+      return { marginPct: 0, pH: 33.3, pD: 33.3, pA: 33.4, fav: 'H', minOdds: 0 };
+    }
+    const rH = 1 / h;
+    const rD = 1 / d;
+    const rA = 1 / a;
     const overround = rH + rD + rA;
     const marginPct = (overround - 1) * 100;
 
     const pH_raw = (rH / overround) * 100;
     const pD_raw = (rD / overround) * 100;
-    const pA_raw = (rA / overround) * 100;
 
-    // Guarantee that rounded percentages strictly sum to 100.0%
     const pH = Math.round(pH_raw * 10) / 10;
     const pD = Math.round(pD_raw * 10) / 10;
     const pA = Math.round((100 - pH - pD) * 10) / 10;
 
-    // Determine Favourite (lowest odds)
-    // Note: tie-break priority is H > A > D when odds are identical (spec favourite-picking)
-    const minOdds = Math.min(odds.h, odds.d, odds.a);
+    const minOdds = Math.min(h, d, a);
     let fav = 'H';
-    if (odds.h === minOdds) fav = 'H';
-    else if (odds.a === minOdds) fav = 'A';
+    if (h === minOdds) fav = 'H';
+    else if (a === minOdds) fav = 'A';
     else fav = 'D';
 
     return {
@@ -113,8 +150,30 @@
     };
   }
 
+  // Format Asian Handicap Line for Display (e.g. -0.75 -> "讓半一 (-0.75)", 0 -> "平手 (0)")
+  function formatAHLine(line) {
+    if (line === 0) return '平手 (0)';
+    const sign = line > 0 ? '+' : '';
+    let cantoneseTerm = '';
+    const abs = Math.abs(line);
+    if (abs === 0.25) cantoneseTerm = '平手/半球';
+    else if (abs === 0.5) cantoneseTerm = '半球';
+    else if (abs === 0.75) cantoneseTerm = '半球/一球';
+    else if (abs === 1.0) cantoneseTerm = '一球';
+    else if (abs === 1.25) cantoneseTerm = '一球/球半';
+    else if (abs === 1.5) cantoneseTerm = '球半';
+    else if (abs === 1.75) cantoneseTerm = '球半/兩球';
+    else if (abs === 2.0) cantoneseTerm = '兩球';
+    else if (abs === 2.25) cantoneseTerm = '兩球/兩球半';
+    else if (abs === 2.5) cantoneseTerm = '兩球半';
+    else cantoneseTerm = `${abs}球`;
+
+    const prefix = line > 0 ? '受讓' : '讓';
+    return `${prefix}${cantoneseTerm} (${sign}${line})`;
+  }
+
   // --- LocalStorage Best Score Handling ---
-  const STORAGE_KEY = 'btb_best';
+  const STORAGE_KEY = 'btb_best_v2';
 
   function getBestScore() {
     try {
@@ -134,7 +193,7 @@
       const cur = getBestScore();
       if (cur === null || score > cur) {
         localStorage.setItem(STORAGE_KEY, score.toFixed(1));
-        return true; // new high score
+        return true;
       }
     } catch (e) {
       // Graceful fallback
@@ -142,18 +201,7 @@
     return false;
   }
 
-  // --- Utility Functions ---
-  function shuffleArray(arr) {
-    const copy = [...arr];
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp = copy[i];
-      copy[i] = copy[j];
-      copy[j] = temp;
-    }
-    return copy;
-  }
-
+  // --- Number & Utility Formatting ---
   function formatNum(val) {
     const r = Math.round(val * 10) / 10;
     return r.toFixed(1);
@@ -165,121 +213,282 @@
     return r.toFixed(1);
   }
 
-  // --- Game State ---
-  const STAKE_PER_MATCH = 10;
-  const EXACT_SCORE_BONUS = 20;
-  const TOTAL_ROUNDS = 10;
+  function shuffleArray(arr) {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = temp;
+    }
+    return copy;
+  }
 
+  // --- Lazy Loading Competition Data Files via <script> tags ---
+  const scriptLoadPromises = new Map();
+
+  function loadCompetitionData(compId) {
+    if (window.BTB_DATA && window.BTB_DATA[compId]) {
+      return Promise.resolve(window.BTB_DATA[compId]);
+    }
+    if (scriptLoadPromises.has(compId)) {
+      return scriptLoadPromises.get(compId);
+    }
+
+    const p = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `data/${compId}.js`;
+      script.async = false;
+
+      const timeoutId = setTimeout(() => {
+        scriptLoadPromises.delete(compId);
+        if (script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error(`逾時未能載入 data/${compId}.js`));
+      }, 10000);
+
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        if (window.BTB_DATA && window.BTB_DATA[compId]) {
+          resolve(window.BTB_DATA[compId]);
+        } else {
+          scriptLoadPromises.delete(compId);
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error(`Data for ${compId} not found after script load.`));
+        }
+      };
+
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        scriptLoadPromises.delete(compId);
+        if (script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error(`Failed to load data/${compId}.js`));
+      };
+
+      document.head.appendChild(script);
+    });
+
+    scriptLoadPromises.set(compId, p);
+    return p;
+  }
+
+  // Ensure all selected competitions are loaded
+  function loadSelectedCompetitions(compIds) {
+    return Promise.all(compIds.map(loadCompetitionData));
+  }
+
+  // --- Game State ---
   const state = {
-    selectedSeason: '2025/26',
+    // Setup Options
+    selectedComps: new Set(['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'uel', 'uecl']),
+    selectedSeasons: new Set(['2025/26', '2024/25', '2023/24', '2022/23', '2021/22']),
+    betMode: '1x2',          // '1x2' | 'ah'
+    oddsType: 'closing',     // 'closing' | 'opening'
+    roundsCount: 10,
+    stake: 10,
+    startingBankroll: 100.0,
+    selectedTeam: '',        // empty = all
+    dateFrom: '',            // YYYY-MM-DD
+    dateTo: '',              // YYYY-MM-DD
+
+    // Live Available Match Count Pool
+    availablePoolCount: 0,
+
+    // Current Game Session
     sessionMatches: [],
+    unusedPool: [],
+    rerollCount: 0,
     currentRoundIdx: 0,
     playerBankroll: 100.0,
     baselineBankroll: 100.0,
     isRoundRevealed: false,
     isAdvancing: false,
     endScreenOpenedAt: 0,
-    selectedPick: null, // 'H' | 'D' | 'A'
+
+    // Current Round Selection
+    selectedPick: null,      // 'H' | 'D' | 'A' for 1X2, or 'AH_H' | 'AH_A' for AH
     exactScoreActive: false,
     guessHome: null,
     guessAway: null,
     sessionRecap: []
   };
 
-  // --- DOM Elements ---
-  const DOM = {
-    // Screens
-    startScreen: document.getElementById('start-screen'),
-    gameScreen: document.getElementById('game-screen'),
-    endScreen: document.getElementById('end-screen'),
+  // --- DOM Elements Cache ---
+  let DOM = {};
 
-    // Start Screen
-    seasonBtns: document.querySelectorAll('.season-btn'),
-    bestScoreDisplay: document.getElementById('best-score-display'),
-    startGameBtn: document.getElementById('start-game-btn'),
-    startErrorBanner: document.getElementById('start-error-banner'),
+  function initDOMElements() {
+    DOM = {
+      // Screens
+      startScreen: document.getElementById('start-screen'),
+      gameScreen: document.getElementById('game-screen'),
+      endScreen: document.getElementById('end-screen'),
 
-    // Game HUD
-    hudRoundText: document.getElementById('hud-round-text'),
-    hudSeason: document.getElementById('hud-season'),
-    hudDate: document.getElementById('hud-date'),
-    playerBankrollDisplay: document.getElementById('player-bankroll-display'),
-    playerChangeDisplay: document.getElementById('player-change-display'),
-    baselineBankrollDisplay: document.getElementById('baseline-bankroll-display'),
-    baselineChangeDisplay: document.getElementById('baseline-change-display'),
+      // Start Screen Options
+      compChipsContainer: document.getElementById('comp-chips-container'),
+      seasonChipsContainer: document.getElementById('season-chips-container'),
+      btnCompAll: document.getElementById('btn-comp-all'),
+      btnCompLeagues: document.getElementById('btn-comp-leagues'),
+      btnCompCups: document.getElementById('btn-comp-cups'),
+      btnSeasonToggle: document.getElementById('btn-season-toggle'),
 
-    // Match Teams & Center Score
-    homeCrest: document.getElementById('home-crest'),
-    homeTeamZh: document.getElementById('home-team-zh'),
-    homeTeamEn: document.getElementById('home-team-en'),
-    awayCrest: document.getElementById('away-crest'),
-    awayTeamZh: document.getElementById('away-team-zh'),
-    awayTeamEn: document.getElementById('away-team-en'),
-    vsBadge: document.getElementById('vs-badge'),
-    revealedScoreBox: document.getElementById('revealed-score-box'),
-    ftScoreText: document.getElementById('ft-score-text'),
-    subScoreText: document.getElementById('sub-score-text'),
-    outcomeTag: document.getElementById('outcome-tag'),
+      betModeControl: document.getElementById('bet-mode-control'),
+      ahModeNote: document.getElementById('ah-mode-note'),
+      oddsTypeControl: document.getElementById('odds-type-control'),
+      cupOddsNote: document.getElementById('cup-odds-note'),
 
-    // Bookmaker board
-    marginValueDisplay: document.getElementById('margin-value-display'),
-    btnPickH: document.getElementById('btn-pick-h'),
-    btnPickD: document.getElementById('btn-pick-d'),
-    btnPickA: document.getElementById('btn-pick-a'),
-    oddsValH: document.getElementById('odds-val-h'),
-    oddsValD: document.getElementById('odds-val-d'),
-    oddsValA: document.getElementById('odds-val-a'),
-    probValH: document.getElementById('prob-val-h'),
-    probValD: document.getElementById('prob-val-d'),
-    probValA: document.getElementById('prob-val-a'),
-    favBadgeH: document.getElementById('fav-badge-h'),
-    favBadgeD: document.getElementById('fav-badge-d'),
-    favBadgeA: document.getElementById('fav-badge-a'),
+      roundsPresetContainer: document.getElementById('rounds-preset-container'),
+      customRoundsWrap: document.getElementById('custom-rounds-wrap'),
+      customRoundsInput: document.getElementById('custom-rounds-input'),
 
-    // Exact Score
-    exactScoreToggle: document.getElementById('exact-score-toggle'),
-    exactScoreSteppers: document.getElementById('exact-score-steppers'),
-    stepperHomeName: document.getElementById('stepper-home-name'),
-    stepperAwayName: document.getElementById('stepper-away-name'),
-    stepperHomeMinus: document.getElementById('stepper-home-minus'),
-    stepperHomePlus: document.getElementById('stepper-home-plus'),
-    stepperHomeVal: document.getElementById('stepper-home-val'),
-    stepperAwayMinus: document.getElementById('stepper-away-minus'),
-    stepperAwayPlus: document.getElementById('stepper-away-plus'),
-    stepperAwayVal: document.getElementById('stepper-away-val'),
-    clearScoreBtn: document.getElementById('clear-score-btn'),
+      bankrollPresetContainer: document.getElementById('bankroll-preset-container'),
+      customBankrollWrap: document.getElementById('custom-bankroll-wrap'),
+      customBankrollInput: document.getElementById('custom-bankroll-input'),
 
-    // Reveal Action
-    revealBtn: document.getElementById('reveal-btn'),
-    revealBtnText: document.getElementById('reveal-btn-text'),
-    roundResultCard: document.getElementById('round-result-card'),
-    resultStatusIcon: document.getElementById('result-status-icon'),
-    statusMainText: document.getElementById('status-main-text'),
-    statusSubText: document.getElementById('status-sub-text'),
-    playerRoundPl: document.getElementById('player-round-pl'),
-    baselineRoundPl: document.getElementById('baseline-round-pl'),
-    nextRoundBtn: document.getElementById('next-round-btn'),
+      stakePresetContainer: document.getElementById('stake-preset-container'),
+      customStakeWrap: document.getElementById('custom-stake-wrap'),
+      customStakeInput: document.getElementById('custom-stake-input'),
 
-    // End Screen
-    endTrophyBadge: document.getElementById('end-trophy-badge'),
-    verdictBanner: document.getElementById('verdict-banner'),
-    verdictText: document.getElementById('verdict-text'),
-    verdictDetail: document.getElementById('verdict-detail'),
-    statFinalBankroll: document.getElementById('stat-final-bankroll'),
-    statNetPl: document.getElementById('stat-net-pl'),
-    statBaselineBankroll: document.getElementById('stat-baseline-bankroll'),
-    statBaselinePl: document.getElementById('stat-baseline-pl'),
-    statHitRate: document.getElementById('stat-hit-rate'),
-    statHitPct: document.getElementById('stat-hit-pct'),
-    statScoreHits: document.getElementById('stat-score-hits'),
-    statScoreBonusSub: document.getElementById('stat-score-bonus-sub'),
-    statRoi: document.getElementById('stat-roi'),
-    endBestScore: document.getElementById('end-best-score'),
-    endRecordSub: document.getElementById('end-record-sub'),
-    recapListContainer: document.getElementById('recap-list-container'),
-    replayBtn: document.getElementById('replay-btn'),
-    homeBtn: document.getElementById('home-btn')
-  };
+      // Advanced Filter
+      advancedFilterDetails: document.getElementById('advanced-filter-details'),
+      teamSearchInput: document.getElementById('team-search-input'),
+      teamSelect: document.getElementById('team-select'),
+      dateFromInput: document.getElementById('date-from'),
+      dateToInput: document.getElementById('date-to'),
+      btnClearAdvanced: document.getElementById('btn-clear-advanced'),
+
+      // Live Pool Count & Warnings
+      livePoolBanner: document.getElementById('live-pool-banner'),
+      livePoolNum: document.getElementById('live-pool-num'),
+      poolWarningBox: document.getElementById('pool-warning-box'),
+      poolWarningText: document.getElementById('pool-warning-text'),
+      bestScoreDisplay: document.getElementById('best-score-display'),
+      startGameBtn: document.getElementById('start-game-btn'),
+      startBtnText: document.getElementById('start-btn-text'),
+      startErrorBanner: document.getElementById('start-error-banner'),
+
+      // Game Screen HUD
+      hudRoundText: document.getElementById('hud-round-text'),
+      hudCompBadge: document.getElementById('hud-comp-badge'),
+      hudSeason: document.getElementById('hud-season'),
+      hudDate: document.getElementById('hud-date'),
+      hudModeBadge: document.getElementById('hud-mode-badge'),
+      playerBankrollDisplay: document.getElementById('player-bankroll-display'),
+      playerChangeDisplay: document.getElementById('player-change-display'),
+      baselineBankrollDisplay: document.getElementById('baseline-bankroll-display'),
+      baselineChangeDisplay: document.getElementById('baseline-change-display'),
+
+      // Arena Reroll Control
+      rerollBtn: document.getElementById('reroll-btn'),
+      rerollCountPill: document.getElementById('reroll-count-pill'),
+
+      // Teams & Center Score
+      homeCrest: document.getElementById('home-crest'),
+      homeTeamZh: document.getElementById('home-team-zh'),
+      homeTeamEn: document.getElementById('home-team-en'),
+      awayCrest: document.getElementById('away-crest'),
+      awayTeamZh: document.getElementById('away-team-zh'),
+      awayTeamEn: document.getElementById('away-team-en'),
+      vsBadge: document.getElementById('vs-badge'),
+      revealedScoreBox: document.getElementById('revealed-score-box'),
+      ftScoreText: document.getElementById('ft-score-text'),
+      subScoreText: document.getElementById('sub-score-text'),
+      outcomeTag: document.getElementById('outcome-tag'),
+
+      // Market & Movement Analysis
+      marginIndicatorBox: document.getElementById('margin-indicator-box'),
+      marginValueDisplay: document.getElementById('margin-value-display'),
+      matchStakeDisplay: document.getElementById('match-stake-display'),
+
+      oddsMovement1x2: document.getElementById('odds-movement-1x2'),
+      movementItemH: document.getElementById('movement-item-h'),
+      movFlowH: document.getElementById('mov-flow-h'),
+      movBadgeH: document.getElementById('mov-badge-h'),
+      movFlowD: document.getElementById('mov-flow-d'),
+      movBadgeD: document.getElementById('mov-badge-d'),
+      movFlowA: document.getElementById('mov-flow-a'),
+      movBadgeA: document.getElementById('mov-badge-a'),
+
+      oddsMovementAh: document.getElementById('odds-movement-ah'),
+      ahMovementFlowText: document.getElementById('ah-movement-flow-text'),
+      ahLineShiftBadge: document.getElementById('ah-line-shift-badge'),
+      cupOddsBadge: document.getElementById('cup-odds-badge'),
+
+      // Betting Boards
+      oddsBoard1x2: document.getElementById('odds-board-1x2'),
+      btnPickH: document.getElementById('btn-pick-h'),
+      btnPickD: document.getElementById('btn-pick-d'),
+      btnPickA: document.getElementById('btn-pick-a'),
+      oddsValH: document.getElementById('odds-val-h'),
+      oddsValD: document.getElementById('odds-val-d'),
+      oddsValA: document.getElementById('odds-val-a'),
+      probValH: document.getElementById('prob-val-h'),
+      probValD: document.getElementById('prob-val-d'),
+      probValA: document.getElementById('prob-val-a'),
+      favBadgeH: document.getElementById('fav-badge-h'),
+      favBadgeD: document.getElementById('fav-badge-d'),
+      favBadgeA: document.getElementById('fav-badge-a'),
+
+      oddsBoardAh: document.getElementById('odds-board-ah'),
+      btnPickAhH: document.getElementById('btn-pick-ah-h'),
+      btnPickAhA: document.getElementById('btn-pick-ah-a'),
+      ahLabelH: document.getElementById('ah-label-h'),
+      ahLabelA: document.getElementById('ah-label-a'),
+      ahLineH: document.getElementById('ah-line-h'),
+      ahLineA: document.getElementById('ah-line-a'),
+      ahOddsH: document.getElementById('ah-odds-h'),
+      ahOddsA: document.getElementById('ah-odds-a'),
+      favBadgeAhH: document.getElementById('fav-badge-ah-h'),
+      favBadgeAhA: document.getElementById('fav-badge-ah-a'),
+
+      // Exact Score
+      exactScoreToggle: document.getElementById('exact-score-toggle'),
+      exactScoreSteppers: document.getElementById('exact-score-steppers'),
+      stepperHomeName: document.getElementById('stepper-home-name'),
+      stepperAwayName: document.getElementById('stepper-away-name'),
+      stepperHomeMinus: document.getElementById('stepper-home-minus'),
+      stepperHomePlus: document.getElementById('stepper-home-plus'),
+      stepperHomeVal: document.getElementById('stepper-home-val'),
+      stepperAwayMinus: document.getElementById('stepper-away-minus'),
+      stepperAwayPlus: document.getElementById('stepper-away-plus'),
+      stepperAwayVal: document.getElementById('stepper-away-val'),
+      clearScoreBtn: document.getElementById('clear-score-btn'),
+
+      // Reveal & Next Round
+      revealBtn: document.getElementById('reveal-btn'),
+      revealBtnText: document.getElementById('reveal-btn-text'),
+      roundResultCard: document.getElementById('round-result-card'),
+      resultStatusIcon: document.getElementById('result-status-icon'),
+      statusMainText: document.getElementById('status-main-text'),
+      statusSubText: document.getElementById('status-sub-text'),
+      playerRoundPl: document.getElementById('player-round-pl'),
+      baselineRoundPl: document.getElementById('baseline-round-pl'),
+      nextRoundBtn: document.getElementById('next-round-btn'),
+
+      // End Screen
+      endTitleText: document.getElementById('end-title-text'),
+      endTrophyBadge: document.getElementById('end-trophy-badge'),
+      verdictBanner: document.getElementById('verdict-banner'),
+      verdictText: document.getElementById('verdict-text'),
+      verdictDetail: document.getElementById('verdict-detail'),
+      statFinalBankroll: document.getElementById('stat-final-bankroll'),
+      statNetPl: document.getElementById('stat-net-pl'),
+      statBaselineBankroll: document.getElementById('stat-baseline-bankroll'),
+      statBaselinePl: document.getElementById('stat-baseline-pl'),
+      statHitRate: document.getElementById('stat-hit-rate'),
+      statHitPct: document.getElementById('stat-hit-pct'),
+      statScoreHits: document.getElementById('stat-score-hits'),
+      statScoreBonusSub: document.getElementById('stat-score-bonus-sub'),
+      statRoi: document.getElementById('stat-roi'),
+      statRoiSub: document.getElementById('stat-roi-sub'),
+      statRerollCount: document.getElementById('stat-reroll-count'),
+      statRerollSub: document.getElementById('stat-reroll-sub'),
+      endBestScore: document.getElementById('end-best-score'),
+      endRecordSub: document.getElementById('end-record-sub'),
+      recapSectionTitle: document.getElementById('recap-section-title'),
+      recapListContainer: document.getElementById('recap-list-container'),
+      replayBtn: document.getElementById('replay-btn'),
+      homeBtn: document.getElementById('home-btn')
+    };
+  }
 
   // --- Screen Switching ---
   function showScreen(screenEl) {
@@ -289,7 +498,6 @@
     screenEl.classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Focus primary interactive control for keyboard navigation
     if (screenEl === DOM.startScreen) {
       if (DOM.startGameBtn) DOM.startGameBtn.focus();
     } else if (screenEl === DOM.gameScreen) {
@@ -299,7 +507,197 @@
     }
   }
 
-  // --- Initial Start Screen Setup ---
+  // --- Live Pool Count Calculation ---
+  function updateLivePoolCount() {
+    if (!window.BTB_META) return;
+
+    const isAdvancedFilterActive = !!(state.selectedTeam || state.dateFrom || state.dateTo);
+
+    // If no advanced filters are active, calculate instantaneously from BTB_META.counts!
+    if (!isAdvancedFilterActive) {
+      let count = 0;
+      const metaCounts = window.BTB_META.counts || {};
+      state.selectedComps.forEach(compId => {
+        const compCounts = metaCounts[compId];
+        if (!compCounts) return;
+        window.BTB_META.seasons.forEach((seasonStr, sIdx) => {
+          if (state.selectedSeasons.has(seasonStr)) {
+            const seasonInfo = compCounts[sIdx];
+            if (seasonInfo) {
+              if (state.betMode === 'ah') {
+                if (state.oddsType === 'opening') {
+                  count += seasonInfo.openAH || 0;
+                } else {
+                  count += seasonInfo.closeAH || 0;
+                }
+              } else {
+                if (state.oddsType === 'opening') {
+                  count += seasonInfo.open1x2 || 0;
+                } else {
+                  count += seasonInfo.close1x2 || (seasonInfo.total || 0);
+                }
+              }
+            }
+          }
+        });
+      });
+
+      applyPoolCountUI(count);
+      return;
+    }
+
+    // If advanced filter is active, we load selected competitions to filter accurately
+    const compsToLoad = Array.from(state.selectedComps);
+    loadSelectedCompetitions(compsToLoad).then(() => {
+      let count = 0;
+      const fromInt = state.dateFrom ? parseInt(state.dateFrom.replace(/-/g, ''), 10) : 0;
+      const toInt = state.dateTo ? parseInt(state.dateTo.replace(/-/g, ''), 10) : 99999999;
+
+      compsToLoad.forEach(compId => {
+        const compData = window.BTB_DATA && window.BTB_DATA[compId];
+        if (!compData || !Array.isArray(compData.m)) return;
+
+        const teams = compData.teams;
+        compData.m.forEach(m => {
+          const sIdx = m[3];
+          const seasonStr = window.BTB_META.seasons[sIdx];
+          if (!state.selectedSeasons.has(seasonStr)) return;
+
+          // Filter by required odds based on betMode and oddsType
+          if (state.betMode === 'ah') {
+            if (state.oddsType === 'opening') {
+              const hasOpenAH = m[17] !== null && m[18] !== null && m[19] !== null;
+              if (!hasOpenAH) return;
+            } else {
+              const hasCloseAH = m[21] !== null && m[22] !== null && m[23] !== null;
+              if (!hasCloseAH) return;
+            }
+          } else {
+            if (state.oddsType === 'opening') {
+              const hasOpen1X2 = m[9] !== null && m[10] !== null && m[11] !== null;
+              if (!hasOpen1X2) return;
+            } else {
+              const hasClose1X2 = m[13] !== null && m[14] !== null && m[15] !== null;
+              if (!hasClose1X2) return;
+            }
+          }
+
+          // Date check
+          const dateInt = m[2];
+          if (dateInt < fromInt || dateInt > toInt) return;
+
+          // Team check
+          if (state.selectedTeam) {
+            const hTeam = teams[m[0]];
+            const aTeam = teams[m[1]];
+            const hMatch = hTeam && (hTeam.zh === state.selectedTeam || hTeam.en === state.selectedTeam);
+            const aMatch = aTeam && (aTeam.zh === state.selectedTeam || aTeam.en === state.selectedTeam);
+            if (!hMatch && !aMatch) return;
+          }
+
+          count++;
+        });
+      });
+
+      applyPoolCountUI(count);
+    }).catch(err => {
+      console.error('Error loading comp data for live pool count:', err);
+    });
+  }
+
+  function applyPoolCountUI(count) {
+    state.availablePoolCount = count;
+    DOM.livePoolNum.textContent = count.toLocaleString('zh-HK');
+
+    let canStart = true;
+    let reason = '';
+
+    if (state.selectedComps.size === 0) {
+      canStart = false;
+      reason = '請至少選擇一項賽事！';
+    } else if (state.selectedSeasons.size === 0) {
+      canStart = false;
+      reason = '請至少選擇一個賽季！';
+    } else if (count === 0) {
+      canStart = false;
+      if (state.betMode === 'ah') {
+        reason = '所選賽事或賽季無符合之亞洲盤比賽（歐洲賽不設亞洲盤），請勾選聯賽！';
+      } else if (state.oddsType === 'opening') {
+        reason = '所選賽事或賽季無初盤比賽（歐洲賽無初盤賠率），請勾選聯賽或切換至終盤！';
+      } else {
+        reason = '所選條件下無符合比賽，請放寬賽事或篩選條件！';
+      }
+    } else if (count < state.roundsCount) {
+      canStart = false;
+      reason = `可用比賽唔夠（得 ${count} 場，需要 ${state.roundsCount} 場），請挑選更多賽季或減少局數！`;
+    }
+
+    if (canStart) {
+      DOM.poolWarningBox.style.display = 'none';
+      DOM.startGameBtn.disabled = false;
+      DOM.startBtnText.textContent = `開波！（共 ${state.roundsCount} 場）`;
+    } else {
+      DOM.poolWarningBox.style.display = 'flex';
+      DOM.poolWarningText.textContent = reason;
+      DOM.startGameBtn.disabled = true;
+      DOM.startBtnText.textContent = '條件不足（無法開波）';
+    }
+  }
+
+  function refreshCupOddsNote() {
+    if (!DOM.cupOddsNote) return;
+    const hasCups = state.selectedComps.has('ucl') || state.selectedComps.has('uel') || state.selectedComps.has('uecl');
+    if (!hasCups) {
+      DOM.cupOddsNote.style.display = 'none';
+      return;
+    }
+    if (state.betMode === 'ah') {
+      DOM.cupOddsNote.textContent = '💡 歐洲賽事（歐聯/歐霸/歐協聯）不設亞洲讓球盤，亞洲盤模式下將不包含歐洲賽。';
+      DOM.cupOddsNote.style.display = 'block';
+    } else if (state.oddsType === 'opening') {
+      DOM.cupOddsNote.textContent = '💡 歐洲賽事（歐聯/歐霸/歐協聯）無初盤賠率，初盤模式下將不包含歐洲賽。';
+      DOM.cupOddsNote.style.display = 'block';
+    } else {
+      DOM.cupOddsNote.textContent = '💡 歐洲賽事（歐聯/歐霸/歐協聯）只有終盤 1X2 賠率，不設初盤及亞洲讓球盤。';
+      DOM.cupOddsNote.style.display = 'block';
+    }
+  }
+
+  // --- Populate Team Search & Dropdown from BTB_META ---
+  function populateTeamDropdown() {
+    if (!window.BTB_META || !Array.isArray(window.BTB_META.teams)) return;
+    const filterText = (DOM.teamSearchInput.value || '').trim().toLowerCase();
+    const currentVal = DOM.teamSelect.value;
+
+    DOM.teamSelect.innerHTML = '<option value="">全部球隊（唔限）</option>';
+
+    // Filter teams that belong to currently selected competitions
+    const activeTeams = window.BTB_META.teams.filter(t => {
+      const inComps = t.comps.some(c => state.selectedComps.has(c));
+      if (!inComps) return false;
+      if (filterText) {
+        return t.zh.toLowerCase().includes(filterText) || t.en.toLowerCase().includes(filterText);
+      }
+      return true;
+    });
+
+    activeTeams.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.zh;
+      opt.textContent = `${t.zh} (${t.en})`;
+      DOM.teamSelect.appendChild(opt);
+    });
+
+    if (currentVal && activeTeams.some(t => t.zh === currentVal)) {
+      DOM.teamSelect.value = currentVal;
+    } else if (state.selectedTeam && activeTeams.some(t => t.zh === state.selectedTeam)) {
+      DOM.teamSelect.value = state.selectedTeam;
+    } else {
+      state.selectedTeam = '';
+    }
+  }
+
+  // --- Start Screen Setup & Listeners ---
   function updateStartScreenBestScore() {
     const best = getBestScore();
     if (best !== null) {
@@ -311,100 +709,380 @@
 
   function initStartScreen() {
     updateStartScreenBestScore();
+    populateTeamDropdown();
 
-    const seasonButtons = Array.from(DOM.seasonBtns);
-
-    function selectSeasonBtn(targetBtn) {
-      seasonButtons.forEach(b => {
-        const isMatch = b === targetBtn;
-        b.classList.toggle('active', isMatch);
-        b.setAttribute('aria-checked', isMatch ? 'true' : 'false');
-        b.setAttribute('tabindex', isMatch ? '0' : '-1');
+    // 1. Competition chips toggle
+    const compChips = DOM.compChipsContainer.querySelectorAll('.chip-btn');
+    compChips.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const comp = btn.dataset.comp;
+        if (state.selectedComps.has(comp)) {
+          state.selectedComps.delete(comp);
+          btn.classList.remove('active');
+          btn.setAttribute('aria-pressed', 'false');
+        } else {
+          state.selectedComps.add(comp);
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
+          // Prefetch in background
+          loadCompetitionData(comp);
+        }
+        populateTeamDropdown();
+        refreshCupOddsNote();
+        updateLivePoolCount();
       });
-      targetBtn.focus();
-      state.selectedSeason = targetBtn.dataset.season;
+    });
+
+    // Competition quick buttons
+    DOM.btnCompAll.addEventListener('click', () => {
+      const allComps = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'uel', 'uecl'];
+      allComps.forEach(c => state.selectedComps.add(c));
+      compChips.forEach(b => {
+        b.classList.add('active');
+        b.setAttribute('aria-pressed', 'true');
+      });
+      populateTeamDropdown();
+      refreshCupOddsNote();
+      updateLivePoolCount();
+    });
+
+    DOM.btnCompLeagues.addEventListener('click', () => {
+      const leagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'];
+      state.selectedComps.clear();
+      leagues.forEach(c => state.selectedComps.add(c));
+      compChips.forEach(b => {
+        const isL = leagues.includes(b.dataset.comp);
+        b.classList.toggle('active', isL);
+        b.setAttribute('aria-pressed', isL ? 'true' : 'false');
+      });
+      populateTeamDropdown();
+      refreshCupOddsNote();
+      updateLivePoolCount();
+    });
+
+    DOM.btnCompCups.addEventListener('click', () => {
+      const cups = ['ucl', 'uel', 'uecl'];
+      state.selectedComps.clear();
+      cups.forEach(c => state.selectedComps.add(c));
+      compChips.forEach(b => {
+        const isC = cups.includes(b.dataset.comp);
+        b.classList.toggle('active', isC);
+        b.setAttribute('aria-pressed', isC ? 'true' : 'false');
+      });
+      populateTeamDropdown();
+      refreshCupOddsNote();
+      updateLivePoolCount();
+    });
+
+    // 2. Season chips toggle
+    const seasonChips = DOM.seasonChipsContainer.querySelectorAll('.chip-btn');
+    seasonChips.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = btn.dataset.season;
+        if (state.selectedSeasons.has(s)) {
+          state.selectedSeasons.delete(s);
+          btn.classList.remove('active');
+          btn.setAttribute('aria-pressed', 'false');
+        } else {
+          state.selectedSeasons.add(s);
+          btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
+        }
+        updateLivePoolCount();
+      });
+    });
+
+    DOM.btnSeasonToggle.addEventListener('click', () => {
+      const allSeasons = ['2025/26', '2024/25', '2023/24', '2022/23', '2021/22'];
+      if (state.selectedSeasons.size === allSeasons.length) {
+        state.selectedSeasons.clear();
+        seasonChips.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+      } else {
+        allSeasons.forEach(s => state.selectedSeasons.add(s));
+        seasonChips.forEach(b => {
+          b.classList.add('active');
+          b.setAttribute('aria-pressed', 'true');
+        });
+      }
+      updateLivePoolCount();
+    });
+
+    // 3. Bet mode segmented control
+    const modeBtns = DOM.betModeControl.querySelectorAll('.segment-btn');
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        state.betMode = btn.dataset.mode;
+
+        DOM.ahModeNote.style.display = state.betMode === 'ah' ? 'block' : 'none';
+        refreshCupOddsNote();
+        updateLivePoolCount();
+      });
+    });
+
+    // 4. Odds type segmented control
+    const oddsBtns = DOM.oddsTypeControl.querySelectorAll('.segment-btn');
+    oddsBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        oddsBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        state.oddsType = btn.dataset.odds;
+
+        refreshCupOddsNote();
+        updateLivePoolCount();
+      });
+    });
+
+    // 5. Rounds presets & custom input
+    const roundBtns = DOM.roundsPresetContainer.querySelectorAll('.chip-btn');
+    roundBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        roundBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        const rVal = btn.dataset.rounds;
+        if (rVal === 'custom') {
+          DOM.customRoundsWrap.style.display = 'flex';
+          state.roundsCount = Math.max(1, parseInt(DOM.customRoundsInput.value, 10) || 10);
+        } else {
+          DOM.customRoundsWrap.style.display = 'none';
+          state.roundsCount = parseInt(rVal, 10);
+        }
+        updateLivePoolCount();
+      });
+    });
+
+    DOM.customRoundsInput.addEventListener('input', () => {
+      state.roundsCount = Math.max(1, parseInt(DOM.customRoundsInput.value, 10) || 1);
+      updateLivePoolCount();
+    });
+
+    // 6. Starting Bankroll presets & custom input
+    if (DOM.bankrollPresetContainer) {
+      const bankrollBtns = DOM.bankrollPresetContainer.querySelectorAll('.chip-btn');
+      bankrollBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          bankrollBtns.forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-checked', 'false');
+          });
+          btn.classList.add('active');
+          btn.setAttribute('aria-checked', 'true');
+          const bVal = btn.dataset.bankroll;
+          if (bVal === 'custom') {
+            DOM.customBankrollWrap.style.display = 'flex';
+            state.startingBankroll = Math.max(1, parseFloat(DOM.customBankrollInput.value) || 100);
+          } else {
+            DOM.customBankrollWrap.style.display = 'none';
+            state.startingBankroll = parseFloat(bVal);
+          }
+        });
+      });
+
+      DOM.customBankrollInput.addEventListener('input', () => {
+        state.startingBankroll = Math.max(1, parseFloat(DOM.customBankrollInput.value) || 1);
+      });
     }
 
-    seasonButtons.forEach((btn, idx) => {
+    // 7. Stake presets & custom input
+    const stakeBtns = DOM.stakePresetContainer.querySelectorAll('.chip-btn');
+    stakeBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        selectSeasonBtn(btn);
-      });
-
-      btn.addEventListener('keydown', (e) => {
-        let targetIdx = null;
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-          targetIdx = (idx + 1) % seasonButtons.length;
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-          targetIdx = (idx - 1 + seasonButtons.length) % seasonButtons.length;
-        } else if (e.key === 'Home') {
-          targetIdx = 0;
-        } else if (e.key === 'End') {
-          targetIdx = seasonButtons.length - 1;
-        } else if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          selectSeasonBtn(btn);
-          return;
-        }
-
-        if (targetIdx !== null) {
-          e.preventDefault();
-          selectSeasonBtn(seasonButtons[targetIdx]);
+        stakeBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        const sVal = btn.dataset.stake;
+        if (sVal === 'custom') {
+          DOM.customStakeWrap.style.display = 'flex';
+          state.stake = Math.max(1, parseInt(DOM.customStakeInput.value, 10) || 10);
+        } else {
+          DOM.customStakeWrap.style.display = 'none';
+          state.stake = parseInt(sVal, 10);
         }
       });
     });
 
+    DOM.customStakeInput.addEventListener('input', () => {
+      state.stake = Math.max(1, parseInt(DOM.customStakeInput.value, 10) || 1);
+    });
+
+    // 7. Advanced filter listeners
+    DOM.teamSearchInput.addEventListener('input', () => {
+      populateTeamDropdown();
+    });
+
+    DOM.teamSelect.addEventListener('change', () => {
+      state.selectedTeam = DOM.teamSelect.value;
+      updateLivePoolCount();
+    });
+
+    DOM.dateFromInput.addEventListener('change', () => {
+      state.dateFrom = DOM.dateFromInput.value;
+      updateLivePoolCount();
+    });
+
+    DOM.dateToInput.addEventListener('change', () => {
+      state.dateTo = DOM.dateToInput.value;
+      updateLivePoolCount();
+    });
+
+    DOM.btnClearAdvanced.addEventListener('click', () => {
+      DOM.teamSearchInput.value = '';
+      DOM.teamSelect.value = '';
+      DOM.dateFromInput.value = '';
+      DOM.dateToInput.value = '';
+      state.selectedTeam = '';
+      state.dateFrom = '';
+      state.dateTo = '';
+      populateTeamDropdown();
+      updateLivePoolCount();
+    });
+
+    // 8. Start game CTA
     DOM.startGameBtn.addEventListener('click', startNewGame);
+
+    // Initial note & pool count calculation
+    refreshCupOddsNote();
+    updateLivePoolCount();
   }
 
-  // --- Game Initialization ---
+  // --- Start Game & Match Pool Extraction ---
   function startNewGame() {
     if (DOM.startErrorBanner) {
       DOM.startErrorBanner.style.display = 'none';
       DOM.startErrorBanner.textContent = '';
     }
 
-    if (!window.MATCHES || !Array.isArray(window.MATCHES) || window.MATCHES.length === 0) {
-      showScreen(DOM.startScreen);
-      if (DOM.startErrorBanner) {
-        DOM.startErrorBanner.textContent = '未載入比賽數據！請先執行 python3 build_data.py 生成 data.js。';
-        DOM.startErrorBanner.style.display = 'block';
-        DOM.startErrorBanner.focus();
-      }
+    const compsToLoad = Array.from(state.selectedComps);
+    if (compsToLoad.length === 0) {
+      alert('請先選擇至少一項賽事！');
       return;
     }
 
-    // Filter matches by selected season
-    let pool = window.MATCHES;
-    if (state.selectedSeason === '2025/26' || state.selectedSeason === '2024/25') {
-      pool = window.MATCHES.filter(m => m.season === state.selectedSeason);
-    }
+    DOM.startGameBtn.disabled = true;
+    DOM.startBtnText.textContent = '載入比賽數據中...';
 
-    if (pool.length < TOTAL_ROUNDS) {
-      showScreen(DOM.startScreen);
-      if (DOM.startErrorBanner) {
-        DOM.startErrorBanner.textContent = '賽事池數量不足，無法開始。';
+    loadSelectedCompetitions(compsToLoad).then(() => {
+      const pool = [];
+      const fromInt = state.dateFrom ? parseInt(state.dateFrom.replace(/-/g, ''), 10) : 0;
+      const toInt = state.dateTo ? parseInt(state.dateTo.replace(/-/g, ''), 10) : 99999999;
+
+      compsToLoad.forEach(compId => {
+        const compData = window.BTB_DATA && window.BTB_DATA[compId];
+        if (!compData || !Array.isArray(compData.m)) return;
+
+        const compMeta = (window.BTB_META.competitions || []).find(c => c.id === compId) || { name: compId, fullName: compId };
+        const teams = compData.teams;
+
+        compData.m.forEach(m => {
+          const sIdx = m[3];
+          const seasonStr = window.BTB_META.seasons[sIdx];
+          if (!state.selectedSeasons.has(seasonStr)) return;
+
+          // AH or 1X2 odds requirement based on betMode and oddsType
+          const hasOpenAH = m[17] !== null && m[18] !== null && m[19] !== null;
+          const hasCloseAH = m[21] !== null && m[22] !== null && m[23] !== null;
+          const hasOpen1X2 = m[9] !== null && m[10] !== null && m[11] !== null;
+          const hasClose1X2 = m[13] !== null && m[14] !== null && m[15] !== null;
+
+          if (state.betMode === 'ah') {
+            if (state.oddsType === 'opening' && !hasOpenAH) return;
+            if (state.oddsType === 'closing' && !hasCloseAH) return;
+          } else {
+            if (state.oddsType === 'opening' && !hasOpen1X2) return;
+            if (state.oddsType === 'closing' && !hasClose1X2) return;
+          }
+
+          // Date check
+          const dateInt = m[2];
+          if (dateInt < fromInt || dateInt > toInt) return;
+
+          // Team filter check
+          const homeTeam = teams[m[0]];
+          const awayTeam = teams[m[1]];
+          if (state.selectedTeam) {
+            const hMatch = homeTeam && (homeTeam.zh === state.selectedTeam || homeTeam.en === state.selectedTeam);
+            const aMatch = awayTeam && (awayTeam.zh === state.selectedTeam || awayTeam.en === state.selectedTeam);
+            if (!hMatch && !aMatch) return;
+          }
+
+          // Format Date YYYY-MM-DD
+          const dStr = String(dateInt);
+          const formattedDate = `${dStr.substring(0, 4)}-${dStr.substring(4, 6)}-${dStr.substring(6, 8)}`;
+
+          pool.push({
+            comp: compId,
+            compName: compMeta.name,
+            compFullName: compMeta.fullName,
+            season: seasonStr,
+            date: formattedDate,
+            home: homeTeam,
+            away: awayTeam,
+            fthg: m[4],
+            ftag: m[5],
+            ftr: m[6],
+            hthg: m[7],
+            htag: m[8],
+            // 1X2 Odds
+            open1X2: m[9] ? { h: m[9], d: m[10], a: m[11], bk: m[12] } : null,
+            close1X2: m[13] ? { h: m[13], d: m[14], a: m[15], bk: m[16] } : null,
+            // AH Odds
+            openAH: hasOpenAH ? { line: m[17], h: m[18], a: m[19], bk: m[20] } : null,
+            closeAH: hasCloseAH ? { line: m[21], h: m[22], a: m[23], bk: m[24] } : null
+          });
+        });
+      });
+
+      if (pool.length < state.roundsCount) {
+        DOM.startGameBtn.disabled = false;
+        DOM.startBtnText.textContent = `開波！（共 ${state.roundsCount} 場）`;
+        DOM.startErrorBanner.textContent = `篩選後可用比賽得 ${pool.length} 場，不足設定嘅 ${state.roundsCount} 場！請調整選項。`;
         DOM.startErrorBanner.style.display = 'block';
-        DOM.startErrorBanner.focus();
+        return;
       }
-      return;
-    }
 
-    // Pick 10 distinct random matches
-    state.sessionMatches = shuffleArray(pool).slice(0, TOTAL_ROUNDS);
-    state.currentRoundIdx = 0;
-    state.playerBankroll = 100.0;
-    state.baselineBankroll = 100.0;
-    state.sessionRecap = [];
-    state.isAdvancing = false;
+      // Sample N distinct random matches and store remaining in unusedPool
+      const shuffled = shuffleArray(pool);
+      state.sessionMatches = shuffled.slice(0, state.roundsCount);
+      state.unusedPool = shuffled.slice(state.roundsCount);
+      state.rerollCount = 0;
+      state.currentRoundIdx = 0;
+      state.playerBankroll = state.startingBankroll;
+      state.baselineBankroll = state.startingBankroll;
+      state.sessionRecap = [];
+      state.isAdvancing = false;
 
-    showScreen(DOM.gameScreen);
-    loadRound(state.currentRoundIdx);
+      showScreen(DOM.gameScreen);
+      loadRound(state.currentRoundIdx);
+    }).catch(err => {
+      console.error('Failed to load competition data:', err);
+      alert('載入賽事數據出錯，請確保 data/*.js 檔案存在。');
+      DOM.startGameBtn.disabled = false;
+      DOM.startBtnText.textContent = `開波！（共 ${state.roundsCount} 場）`;
+    });
   }
 
-  // --- Load Round ---
+  // --- Load and Render Round ---
   function loadRound(roundIdx) {
     const match = state.sessionMatches[roundIdx];
-    const oddsMath = calculateOddsMath(match.odds);
 
     state.isRoundRevealed = false;
     state.isAdvancing = false;
@@ -414,9 +1092,15 @@
     state.guessAway = null;
 
     // HUD Update
-    DOM.hudRoundText.textContent = `第 ${roundIdx + 1} / ${TOTAL_ROUNDS} 場`;
+    DOM.hudRoundText.textContent = `第 ${roundIdx + 1} / ${state.roundsCount} 場`;
+    DOM.hudCompBadge.textContent = match.compName;
     DOM.hudSeason.textContent = match.season;
     DOM.hudDate.textContent = match.date;
+
+    const modeLabel = state.betMode === 'ah' ? '亞洲讓球盤' : '1X2';
+    const oddsLabel = state.oddsType === 'opening' ? '初盤' : '終盤';
+    DOM.hudModeBadge.textContent = `${modeLabel} · ${oddsLabel}`;
+
     DOM.playerBankrollDisplay.innerHTML = `${formatNum(state.playerBankroll)} <span class="unit">注</span>`;
     DOM.baselineBankrollDisplay.innerHTML = `${formatNum(state.baselineBankroll)} <span class="unit">注</span>`;
     DOM.playerChangeDisplay.textContent = '±0.0';
@@ -424,36 +1108,104 @@
     DOM.baselineChangeDisplay.textContent = '±0.0';
     DOM.baselineChangeDisplay.className = 'bankroll-change';
 
-    // Teams board
-    const homeInfo = getTeamInfo(match.home);
-    const awayInfo = getTeamInfo(match.away);
+    // Reroll Button Update
+    if (DOM.rerollCountPill) {
+      DOM.rerollCountPill.textContent = `已換 ${state.rerollCount} 次`;
+    }
+    if (DOM.rerollBtn) {
+      if (!state.unusedPool || state.unusedPool.length === 0) {
+        DOM.rerollBtn.disabled = true;
+        DOM.rerollBtn.title = '賽事池已無其他備用比賽';
+      } else {
+        DOM.rerollBtn.disabled = false;
+        DOM.rerollBtn.title = '換另一場未用過的比賽 (快捷鍵 R)';
+      }
+    }
 
-    DOM.homeCrest.innerHTML = createTeamCrestSVG(match.home);
-    DOM.homeTeamZh.textContent = homeInfo.zh;
-    DOM.homeTeamEn.textContent = homeInfo.en;
+    // Teams Board
+    DOM.homeCrest.innerHTML = createTeamCrestSVG(match.home.zh, match.home.en);
+    DOM.homeTeamZh.textContent = match.home.zh;
+    DOM.homeTeamEn.textContent = match.home.en;
 
-    DOM.awayCrest.innerHTML = createTeamCrestSVG(match.away);
-    DOM.awayTeamZh.textContent = awayInfo.zh;
-    DOM.awayTeamEn.textContent = awayInfo.en;
+    DOM.awayCrest.innerHTML = createTeamCrestSVG(match.away.zh, match.away.en);
+    DOM.awayTeamZh.textContent = match.away.zh;
+    DOM.awayTeamEn.textContent = match.away.en;
 
-    // Score center: reset to VS
+    // Score center: reset to VS badge
     DOM.vsBadge.style.display = 'block';
     DOM.revealedScoreBox.style.display = 'none';
 
-    // Bookmaker Margin & Odds
-    DOM.marginValueDisplay.textContent = `${oddsMath.marginPct.toFixed(1)}%`;
-    DOM.oddsValH.textContent = match.odds.h.toFixed(2);
-    DOM.oddsValD.textContent = match.odds.d.toFixed(2);
-    DOM.oddsValA.textContent = match.odds.a.toFixed(2);
+    // Stake reminder
+    DOM.matchStakeDisplay.textContent = `${state.stake} 注`;
 
-    DOM.probValH.textContent = `${oddsMath.pH.toFixed(1)}%`;
-    DOM.probValD.textContent = `${oddsMath.pD.toFixed(1)}%`;
-    DOM.probValA.textContent = `${oddsMath.pA.toFixed(1)}%`;
+    // Cup notification
+    const isCup = match.comp === 'ucl' || match.comp === 'uel' || match.comp === 'uecl';
+    DOM.cupOddsBadge.style.display = isCup ? 'block' : 'none';
 
-    // Favourite Badge Slot
-    DOM.favBadgeH.innerHTML = oddsMath.fav === 'H' ? '<span class="fav-badge">莊家熱門 🔥</span>' : '';
-    DOM.favBadgeD.innerHTML = oddsMath.fav === 'D' ? '<span class="fav-badge">莊家熱門 🔥</span>' : '';
-    DOM.favBadgeA.innerHTML = oddsMath.fav === 'A' ? '<span class="fav-badge">莊家熱門 🔥</span>' : '';
+    // --- Render Market Movement and Betting Boards ---
+    if (state.betMode === '1x2') {
+      DOM.oddsMovement1x2.style.display = 'flex';
+      DOM.oddsMovementAh.style.display = 'none';
+      DOM.oddsBoard1x2.style.display = 'grid';
+      DOM.oddsBoardAh.style.display = 'none';
+      DOM.marginIndicatorBox.style.display = 'flex';
+
+      render1X2Board(match);
+    } else {
+      DOM.oddsMovement1x2.style.display = 'none';
+      DOM.oddsMovementAh.style.display = 'flex';
+      DOM.oddsBoard1x2.style.display = 'none';
+      DOM.oddsBoardAh.style.display = 'grid';
+      DOM.marginIndicatorBox.style.display = 'none';
+
+      renderAHBoard(match);
+    }
+
+    // Reset Exact Score Panel
+    DOM.exactScoreToggle.disabled = false;
+    DOM.exactScoreToggle.checked = false;
+    DOM.exactScoreSteppers.style.display = 'none';
+    DOM.stepperHomeName.textContent = match.home.zh;
+    DOM.stepperAwayName.textContent = match.away.zh;
+    DOM.stepperHomeVal.textContent = '—';
+    DOM.stepperAwayVal.textContent = '—';
+    DOM.stepperHomeMinus.disabled = false;
+    DOM.stepperHomePlus.disabled = false;
+    DOM.stepperAwayMinus.disabled = false;
+    DOM.stepperAwayPlus.disabled = false;
+    DOM.clearScoreBtn.disabled = false;
+
+    // Reset Reveal Actions
+    DOM.revealBtn.style.display = 'flex';
+    DOM.revealBtn.disabled = true;
+    DOM.revealBtnText.textContent = state.betMode === 'ah' ? '請先選擇「主隊」或「客隊」讓球盤' : '請先選擇「主勝 / 和局 / 客勝」';
+    DOM.roundResultCard.style.display = 'none';
+
+    if (roundIdx === state.roundsCount - 1) {
+      DOM.nextRoundBtn.innerHTML = '<span>查看最終戰報</span> <span class="btn-icon">🏆</span>';
+    } else {
+      DOM.nextRoundBtn.innerHTML = '<span>下一場</span> <span class="btn-icon">⏩</span>';
+    }
+  }
+
+  // --- Render 1X2 Market & Movement ---
+  function render1X2Board(match) {
+    const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
+    const math = calculateOddsMath(activeOdds.h, activeOdds.d, activeOdds.a);
+
+    DOM.marginValueDisplay.textContent = `${math.marginPct.toFixed(1)}%`;
+
+    DOM.oddsValH.textContent = activeOdds.h.toFixed(2);
+    DOM.oddsValD.textContent = activeOdds.d.toFixed(2);
+    DOM.oddsValA.textContent = activeOdds.a.toFixed(2);
+
+    DOM.probValH.textContent = `${math.pH.toFixed(1)}%`;
+    DOM.probValD.textContent = `${math.pD.toFixed(1)}%`;
+    DOM.probValA.textContent = `${math.pA.toFixed(1)}%`;
+
+    DOM.favBadgeH.innerHTML = math.fav === 'H' ? '<span class="fav-badge">莊家熱門 🔥</span>' : '';
+    DOM.favBadgeD.innerHTML = math.fav === 'D' ? '<span class="fav-badge">莊家熱門 🔥</span>' : '';
+    DOM.favBadgeA.innerHTML = math.fav === 'A' ? '<span class="fav-badge">莊家熱門 🔥</span>' : '';
 
     // Clear pick selection
     [DOM.btnPickH, DOM.btnPickD, DOM.btnPickA].forEach(btn => {
@@ -462,55 +1214,128 @@
       btn.setAttribute('aria-pressed', 'false');
     });
 
-    // Re-enable Exact Score controls
-    DOM.exactScoreToggle.disabled = false;
-    DOM.stepperHomeMinus.disabled = false;
-    DOM.stepperHomePlus.disabled = false;
-    DOM.stepperAwayMinus.disabled = false;
-    DOM.stepperAwayPlus.disabled = false;
-    DOM.clearScoreBtn.disabled = false;
-
-    // Reset Exact Score Panel (default off/blank)
-    DOM.exactScoreToggle.checked = false;
-    DOM.exactScoreSteppers.style.display = 'none';
-    DOM.stepperHomeName.textContent = homeInfo.zh;
-    DOM.stepperAwayName.textContent = awayInfo.zh;
-    DOM.stepperHomeVal.textContent = '—';
-    DOM.stepperAwayVal.textContent = '—';
-
-    // Reset Reveal Actions
-    DOM.revealBtn.style.display = 'flex';
-    DOM.revealBtn.disabled = true;
-    DOM.revealBtnText.textContent = '請先選擇「主勝 / 和局 / 客勝」';
-    DOM.roundResultCard.style.display = 'none';
-
-    // Next round button label
-    if (roundIdx === TOTAL_ROUNDS - 1) {
-      DOM.nextRoundBtn.innerHTML = '<span>查看最終戰報</span> <span class="btn-icon">🏆</span>';
+    // 1X2 Movement Display (Opening vs Closing)
+    if (match.open1X2 && match.close1X2) {
+      render1X2MovementItem(DOM.movFlowH, DOM.movBadgeH, match.open1X2.h, match.close1X2.h);
+      render1X2MovementItem(DOM.movFlowD, DOM.movBadgeD, match.open1X2.d, match.close1X2.d);
+      render1X2MovementItem(DOM.movFlowA, DOM.movBadgeA, match.open1X2.a, match.close1X2.a);
     } else {
-      DOM.nextRoundBtn.innerHTML = '<span>下一場</span> <span class="btn-icon">⏩</span>';
+      // Cup or missing opening odds
+      DOM.movFlowH.textContent = `${activeOdds.h.toFixed(2)} (終盤)`;
+      DOM.movBadgeH.textContent = '無初盤';
+      DOM.movBadgeH.className = 'mov-badge flat';
+
+      DOM.movFlowD.textContent = `${activeOdds.d.toFixed(2)} (終盤)`;
+      DOM.movBadgeD.textContent = '無初盤';
+      DOM.movBadgeD.className = 'mov-badge flat';
+
+      DOM.movFlowA.textContent = `${activeOdds.a.toFixed(2)} (終盤)`;
+      DOM.movBadgeA.textContent = '無初盤';
+      DOM.movBadgeA.className = 'mov-badge flat';
+    }
+  }
+
+  function render1X2MovementItem(flowEl, badgeEl, openVal, closeVal) {
+    flowEl.textContent = `${openVal.toFixed(2)} ➔ ${closeVal.toFixed(2)}`;
+    const diff = closeVal - openVal;
+    const pct = (diff / openVal) * 100;
+    if (Math.abs(pct) < 0.1) {
+      badgeEl.textContent = '持平 0.0%';
+      badgeEl.className = 'mov-badge flat';
+    } else if (diff > 0) {
+      badgeEl.textContent = `↑ 升 ${pct.toFixed(1)}%`;
+      badgeEl.className = 'mov-badge rise';
+    } else {
+      badgeEl.textContent = `↓ 跌 ${Math.abs(pct).toFixed(1)}%`;
+      badgeEl.className = 'mov-badge drop';
+    }
+  }
+
+  // --- Render Asian Handicap Market & Movement ---
+  function renderAHBoard(match) {
+    const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
+
+    // Line for Home and Away
+    const homeLine = activeAH.line;
+    const awayLine = -activeAH.line;
+
+    DOM.ahLabelH.textContent = match.home.zh;
+    DOM.ahLabelA.textContent = match.away.zh;
+
+    DOM.ahLineH.textContent = formatAHLine(homeLine);
+    DOM.ahLineA.textContent = formatAHLine(awayLine);
+
+    DOM.ahOddsH.textContent = activeAH.h.toFixed(2);
+    DOM.ahOddsA.textContent = activeAH.a.toFixed(2);
+
+    // Favourite determination in AH: lower odds is favourite; if equal, Home side
+    const ahFav = activeAH.h <= activeAH.a ? 'AH_H' : 'AH_A';
+    DOM.favBadgeAhH.innerHTML = ahFav === 'AH_H' ? '<span class="fav-badge">讓球熱門 🔥</span>' : '';
+    DOM.favBadgeAhA.innerHTML = ahFav === 'AH_A' ? '<span class="fav-badge">讓球熱門 🔥</span>' : '';
+
+    [DOM.btnPickAhH, DOM.btnPickAhA].forEach(btn => {
+      btn.classList.remove('selected');
+      btn.disabled = false;
+      btn.setAttribute('aria-pressed', 'false');
+    });
+
+    // AH Movement Display
+    if (match.openAH && match.closeAH) {
+      const oText = `初盤：主 ${formatAHLine(match.openAH.line)} (主 ${match.openAH.h.toFixed(2)} / 客 ${match.openAH.a.toFixed(2)})`;
+      const cText = `終盤：主 ${formatAHLine(match.closeAH.line)} (主 ${match.closeAH.h.toFixed(2)} / 客 ${match.closeAH.a.toFixed(2)})`;
+      DOM.ahMovementFlowText.textContent = `${oText} ➔ ${cText}`;
+
+      if (match.openAH.line !== match.closeAH.line) {
+        const shiftedMore = match.closeAH.line < match.openAH.line; // e.g. -0.5 to -0.75 means home gives more goals
+        const shiftNote = shiftedMore ? '主隊受捧（讓球升盤）' : '客隊受捧（盤口縮窄）';
+        DOM.ahLineShiftBadge.textContent = `盤口變動：${shiftNote} (${match.openAH.line} ➔ ${match.closeAH.line})`;
+        DOM.ahLineShiftBadge.style.display = 'inline-block';
+      } else {
+        const waterShift = match.closeAH.h < match.openAH.h ? '主隊水位受壓下調' : (match.closeAH.h > match.openAH.h ? '客隊水位受壓下調' : '水位盤口持平');
+        DOM.ahLineShiftBadge.textContent = `盤口持平：${waterShift}`;
+        DOM.ahLineShiftBadge.style.display = 'inline-block';
+      }
+    } else {
+      DOM.ahMovementFlowText.textContent = `終盤讓球：主 ${formatAHLine(activeAH.line)} (主 ${activeAH.h.toFixed(2)} / 客 ${activeAH.a.toFixed(2)})`;
+      DOM.ahLineShiftBadge.style.display = 'none';
     }
   }
 
   // --- Pick Selection Handling ---
   function handlePick(pick) {
     if (state.isRoundRevealed) return;
-
     state.selectedPick = pick;
 
-    [
-      { btn: DOM.btnPickH, key: 'H' },
-      { btn: DOM.btnPickD, key: 'D' },
-      { btn: DOM.btnPickA, key: 'A' }
-    ].forEach(item => {
-      const isSelected = item.key === pick;
-      item.btn.classList.toggle('selected', isSelected);
-      item.btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-    });
+    if (state.betMode === '1x2') {
+      [
+        { btn: DOM.btnPickH, key: 'H' },
+        { btn: DOM.btnPickD, key: 'D' },
+        { btn: DOM.btnPickA, key: 'A' }
+      ].forEach(item => {
+        const isSelected = item.key === pick;
+        item.btn.classList.toggle('selected', isSelected);
+        item.btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      });
 
-    const labelMap = { H: '主勝 (1)', D: '和局 (X)', A: '客勝 (2)' };
-    DOM.revealBtn.disabled = false;
-    DOM.revealBtnText.textContent = `確認下注【${labelMap[pick]}】· 揭曉賽果 📢`;
+      const labelMap = { H: '主勝 (1)', D: '和局 (X)', A: '客勝 (2)' };
+      DOM.revealBtn.disabled = false;
+      DOM.revealBtnText.textContent = `確認下注【${labelMap[pick]}】· 揭曉賽果 📢`;
+    } else {
+      [
+        { btn: DOM.btnPickAhH, key: 'AH_H' },
+        { btn: DOM.btnPickAhA, key: 'AH_A' }
+      ].forEach(item => {
+        const isSelected = item.key === pick;
+        item.btn.classList.toggle('selected', isSelected);
+        item.btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      });
+
+      const match = state.sessionMatches[state.currentRoundIdx];
+      const teamLabel = pick === 'AH_H' ? `${match.home.zh} (主)` : `${match.away.zh} (客)`;
+      DOM.revealBtn.disabled = false;
+      DOM.revealBtnText.textContent = `確認下注【${teamLabel}】· 揭曉賽果 📢`;
+    }
+
     DOM.revealBtn.focus();
   }
 
@@ -539,18 +1364,36 @@
     updateScoreDisplay();
   }
 
-  // --- Reveal Result Logic ---
+  // --- Match Reroll Logic (換一場) ---
+  function handleReroll() {
+    if (state.isRoundRevealed || state.isAdvancing) return;
+    if (!state.unusedPool || state.unusedPool.length === 0) return;
+
+    // Pick another random match from unused pool
+    const randIdx = Math.floor(Math.random() * state.unusedPool.length);
+    const newMatch = state.unusedPool.splice(randIdx, 1)[0];
+
+    // Replace current match (replaced match is discarded and not reused)
+    state.sessionMatches[state.currentRoundIdx] = newMatch;
+    state.rerollCount++;
+
+    // Reload current match slot with the new match
+    loadRound(state.currentRoundIdx);
+  }
+
+  // --- Reveal Result & Settlement Logic ---
   function revealRound() {
     if (state.isRoundRevealed || !state.selectedPick) return;
 
     state.isRoundRevealed = true;
     const match = state.sessionMatches[state.currentRoundIdx];
-    const oddsMath = calculateOddsMath(match.odds);
+    const stake = state.stake;
 
-    // Disable odds buttons
-    [DOM.btnPickH, DOM.btnPickD, DOM.btnPickA].forEach(btn => btn.disabled = true);
-
-    // Disable exact-score controls after reveal
+    // Disable betting buttons, reroll button & exact score
+    if (DOM.rerollBtn) DOM.rerollBtn.disabled = true;
+    [DOM.btnPickH, DOM.btnPickD, DOM.btnPickA, DOM.btnPickAhH, DOM.btnPickAhA].forEach(b => {
+      if (b) b.disabled = true;
+    });
     DOM.exactScoreToggle.disabled = true;
     DOM.stepperHomeMinus.disabled = true;
     DOM.stepperHomePlus.disabled = true;
@@ -558,106 +1401,173 @@
     DOM.stepperAwayPlus.disabled = true;
     DOM.clearScoreBtn.disabled = true;
 
-    // 1. Calculate Player 1X2 P/L: correct pick -> +10*(odds-1), wrong -> -10
-    const playerPickedOdds = match.odds[state.selectedPick.toLowerCase()];
-    const isHit1x2 = state.selectedPick === match.ftr;
-    let playerPL_1x2 = 0;
-    if (isHit1x2) {
-      playerPL_1x2 = STAKE_PER_MATCH * (playerPickedOdds - 1);
+    // 1. Player Settlement
+    let playerPL = 0;
+    let playerOutcomeStr = '';
+    let playerOutcomeKey = '';
+    let playerPickedOdds = 1.0;
+    let playerBetDesc = '';
+
+    // 2. Baseline AI Opponent Settlement
+    let baselinePL = 0;
+    let baselinePickedOdds = 1.0;
+    let baselinePickKey = '';
+    let baselineOutcomeStr = '';
+    let baselineBetDesc = '';
+
+    if (state.betMode === '1x2') {
+      const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
+      const math = calculateOddsMath(activeOdds.h, activeOdds.d, activeOdds.a);
+
+      // Player 1X2
+      playerPickedOdds = activeOdds[state.selectedPick.toLowerCase()];
+      const isHit1x2 = state.selectedPick === match.ftr;
+      const outcomeLabels = { H: '主勝', D: '和局', A: '客勝' };
+      playerBetDesc = `1X2 ${outcomeLabels[state.selectedPick]}`;
+
+      if (isHit1x2) {
+        playerPL = stake * (playerPickedOdds - 1);
+        playerOutcomeKey = 'win';
+        playerOutcomeStr = `命中【${outcomeLabels[state.selectedPick]}】！獲利 ${formatPL(playerPL)} 注`;
+      } else {
+        playerPL = -stake;
+        playerOutcomeKey = 'loss';
+        playerOutcomeStr = `未中【${outcomeLabels[state.selectedPick]}】！損失 -${formatNum(stake)} 注`;
+      }
+
+      // Baseline AI 1X2 (always backs lowest odds favourite)
+      baselinePickKey = math.fav;
+      baselinePickedOdds = activeOdds[baselinePickKey.toLowerCase()];
+      baselineBetDesc = `1X2 ${outcomeLabels[baselinePickKey]}`;
+      const isBaselineHit = baselinePickKey === match.ftr;
+
+      if (isBaselineHit) {
+        baselinePL = stake * (baselinePickedOdds - 1);
+        baselineOutcomeStr = `命中 ${outcomeLabels[baselinePickKey]} (${formatPL(baselinePL)} 注)`;
+      } else {
+        baselinePL = -stake;
+        baselineOutcomeStr = `未中 ${outcomeLabels[baselinePickKey]} (-${formatNum(stake)} 注)`;
+      }
+
     } else {
-      playerPL_1x2 = -STAKE_PER_MATCH;
+      // Asian Handicap Mode
+      const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
+      const goalDiffH = match.fthg - match.ftag; // Home goal diff
+
+      // Player AH
+      const isHomeBack = state.selectedPick === 'AH_H';
+      const playerDiff = isHomeBack ? goalDiffH : -goalDiffH;
+      const playerLine = isHomeBack ? activeAH.line : -activeAH.line;
+      playerPickedOdds = isHomeBack ? activeAH.h : activeAH.a;
+      playerBetDesc = isHomeBack ? `${match.home.zh} (${formatAHLine(playerLine)})` : `${match.away.zh} (${formatAHLine(playerLine)})`;
+
+      // Settle via pure settleAH function in ah.js
+      const ahResult = window.settleAH(playerDiff, playerLine, playerPickedOdds, stake);
+      playerPL = ahResult.profit;
+      playerOutcomeKey = ahResult.outcome;
+
+      const ahOutcomeCantonese = {
+        win: '贏足全盤！',
+        halfwin: '贏半個盤！',
+        push: '走盤退注！',
+        halfloss: '輸半個盤！',
+        loss: '全輸！'
+      };
+      playerOutcomeStr = `${ahOutcomeCantonese[ahResult.outcome] || ''} 獲利 ${formatPL(playerPL)} 注`;
+
+      // Baseline AI AH (backs AH favourite: lower odds, or home if equal)
+      const isAiHome = activeAH.h <= activeAH.a;
+      baselinePickKey = isAiHome ? 'AH_H' : 'AH_A';
+      const aiDiff = isAiHome ? goalDiffH : -goalDiffH;
+      const aiLine = isAiHome ? activeAH.line : -activeAH.line;
+      baselinePickedOdds = isAiHome ? activeAH.h : activeAH.a;
+      baselineBetDesc = isAiHome ? `${match.home.zh} (${formatAHLine(aiLine)})` : `${match.away.zh} (${formatAHLine(aiLine)})`;
+
+      const aiAhResult = window.settleAH(aiDiff, aiLine, baselinePickedOdds, stake);
+      baselinePL = aiAhResult.profit;
+      baselineOutcomeStr = `${ahOutcomeCantonese[aiAhResult.outcome] || ''} (${formatPL(baselinePL)} 注，買${isAiHome ? '主隊' : '客隊'})`;
     }
 
-    // 2. Calculate Exact Score Bonus: if exact score correct -> +20 units
+    // 3. Exact Score Guess Bonus
     let isHitScore = false;
     let exactScoreBonus = 0;
     const isScoreCommitted = state.exactScoreActive && state.guessHome !== null && state.guessAway !== null;
     if (isScoreCommitted) {
       if (state.guessHome === match.fthg && state.guessAway === match.ftag) {
         isHitScore = true;
-        exactScoreBonus = EXACT_SCORE_BONUS;
+        exactScoreBonus = 20; // 20 units fixed bonus
       }
     }
 
-    const totalPlayerRoundPL = playerPL_1x2 + exactScoreBonus;
+    const totalPlayerRoundPL = playerPL + exactScoreBonus;
     state.playerBankroll += totalPlayerRoundPL;
+    state.baselineBankroll += baselinePL;
 
-    // 3. Calculate Baseline AI P/L: virtual player always backs the favourite with same stake (10)
-    const baselineFav = oddsMath.fav;
-    const baselineOdds = match.odds[baselineFav.toLowerCase()];
-    const isBaselineHit = baselineFav === match.ftr;
-    let baselineRoundPL = 0;
-    if (isBaselineHit) {
-      baselineRoundPL = STAKE_PER_MATCH * (baselineOdds - 1);
-    } else {
-      baselineRoundPL = -STAKE_PER_MATCH;
-    }
-    state.baselineBankroll += baselineRoundPL;
-
-    // Save recap data for this match
+    // Record recap
     state.sessionRecap.push({
       round: state.currentRoundIdx + 1,
       match: match,
+      betMode: state.betMode,
       playerPick: state.selectedPick,
+      playerBetDesc: playerBetDesc,
       playerOdds: playerPickedOdds,
-      isHit1x2: isHit1x2,
+      playerOutcomeKey: playerOutcomeKey,
+      playerPL: totalPlayerRoundPL,
       exactScoreActive: isScoreCommitted,
       guessHome: state.guessHome,
       guessAway: state.guessAway,
       isHitScore: isHitScore,
-      playerRoundPL: totalPlayerRoundPL,
-      baselineFav: baselineFav,
-      baselineOdds: baselineOdds,
-      isBaselineHit: isBaselineHit,
-      baselineRoundPL: baselineRoundPL,
+      exactBonus: exactScoreBonus,
+      baselineBetDesc: baselineBetDesc,
+      baselineOdds: baselinePickedOdds,
+      baselinePL: baselinePL,
       playerBankrollAfter: state.playerBankroll,
       baselineBankrollAfter: state.baselineBankroll
     });
 
     // --- UI Update on Reveal ---
-    // Show match final score & sub stats
     DOM.vsBadge.style.display = 'none';
     DOM.revealedScoreBox.style.display = 'flex';
     DOM.ftScoreText.textContent = `${match.fthg} - ${match.ftag}`;
 
     let subText = '';
     if (match.hthg !== null && match.htag !== null) {
-      subText += `半場 ${match.hthg}-${match.htag}`;
+      subText = `半場 ${match.hthg}-${match.htag}`;
+    } else {
+      subText = '全場完';
     }
-    if (match.hs !== null && match.as !== null) {
-      if (subText) subText += ' ｜ ';
-      subText += `射門 ${match.hs}-${match.as}`;
-    }
-    DOM.subScoreText.textContent = subText || '全場完';
+    DOM.subScoreText.textContent = subText;
 
-    const outcomeLabels = { H: '主勝', D: '和局', A: '客勝' };
-    DOM.outcomeTag.textContent = outcomeLabels[match.ftr];
+    const ftrMap = { H: '主勝', D: '和局', A: '客勝' };
+    DOM.outcomeTag.textContent = ftrMap[match.ftr] || '賽果';
 
-    // Update bankroll displays in HUD
+    // Update HUD
     DOM.playerBankrollDisplay.innerHTML = `${formatNum(state.playerBankroll)} <span class="unit">注</span>`;
     DOM.baselineBankrollDisplay.innerHTML = `${formatNum(state.baselineBankroll)} <span class="unit">注</span>`;
 
     DOM.playerChangeDisplay.textContent = `${formatPL(totalPlayerRoundPL)} 注`;
     DOM.playerChangeDisplay.className = `bankroll-change ${totalPlayerRoundPL >= 0 ? 'pos' : 'neg'}`;
 
-    DOM.baselineChangeDisplay.textContent = `${formatPL(baselineRoundPL)} 注`;
-    DOM.baselineChangeDisplay.className = `bankroll-change ${baselineRoundPL >= 0 ? 'pos' : 'neg'}`;
+    DOM.baselineChangeDisplay.textContent = `${formatPL(baselinePL)} 注`;
+    DOM.baselineChangeDisplay.className = `bankroll-change ${baselinePL >= 0 ? 'pos' : 'neg'}`;
 
     // Reveal Result Card Content
     DOM.revealBtn.style.display = 'none';
     DOM.roundResultCard.style.display = 'flex';
 
-    if (isHit1x2) {
+    if (totalPlayerRoundPL > 0) {
       DOM.resultStatusIcon.textContent = '🎉';
-      DOM.statusMainText.textContent = `命中【${outcomeLabels[state.selectedPick]}】！獲利 ${formatPL(playerPL_1x2)} 注`;
+    } else if (totalPlayerRoundPL === 0) {
+      DOM.resultStatusIcon.textContent = '🤝';
     } else {
       DOM.resultStatusIcon.textContent = '❌';
-      DOM.statusMainText.textContent = `未中【${outcomeLabels[state.selectedPick]}】！損失 -10.0 注`;
     }
+
+    DOM.statusMainText.textContent = playerOutcomeStr;
 
     if (isScoreCommitted) {
       if (isHitScore) {
-        DOM.statusSubText.textContent = `🎯 波膽猜測 ${state.guessHome}-${state.guessAway} 命中！特別獎勵 +20.0 注！`;
+        DOM.statusSubText.textContent = `🎯 波膽命中 ${state.guessHome}-${state.guessAway}！特別獎勵 +20.0 注！`;
         DOM.statusSubText.style.color = '#ffd700';
       } else {
         DOM.statusSubText.textContent = `波膽猜測 ${state.guessHome}-${state.guessAway} 不中（實際 ${match.fthg}-${match.ftag}）`;
@@ -671,8 +1581,10 @@
     DOM.playerRoundPl.textContent = `${formatPL(totalPlayerRoundPL)} 注`;
     DOM.playerRoundPl.style.color = totalPlayerRoundPL >= 0 ? '#38ef7d' : '#ff4757';
 
-    DOM.baselineRoundPl.textContent = `${formatPL(baselineRoundPL)} 注 (買${outcomeLabels[baselineFav]} ${baselineOdds.toFixed(2)})`;
-    DOM.baselineRoundPl.style.color = baselineRoundPL >= 0 ? '#38ef7d' : '#ff4757';
+    DOM.baselineRoundPl.textContent = `${formatPL(baselinePL)} 注 (${baselineOutcomeStr})`;
+    DOM.baselineRoundPl.style.color = baselinePL >= 0 ? '#38ef7d' : '#ff4757';
+
+    DOM.nextRoundBtn.focus();
   }
 
   // --- Advance to Next Round or End Screen ---
@@ -680,7 +1592,7 @@
     if (!state.isRoundRevealed || state.isAdvancing) return;
     state.isAdvancing = true;
 
-    if (state.currentRoundIdx < TOTAL_ROUNDS - 1) {
+    if (state.currentRoundIdx < state.roundsCount - 1) {
       state.currentRoundIdx++;
       loadRound(state.currentRoundIdx);
     } else {
@@ -688,7 +1600,7 @@
     }
   }
 
-  // --- End Screen & Summary ---
+  // --- End Screen Summary ---
   function showEndScreen() {
     state.isAdvancing = false;
     state.endScreenOpenedAt = Date.now();
@@ -696,15 +1608,16 @@
 
     const playerFinal = state.playerBankroll;
     const baselineFinal = state.baselineBankroll;
-    const netPL = playerFinal - 100.0;
-    const baselineNetPL = baselineFinal - 100.0;
+    const initial = state.startingBankroll;
+    const netPL = playerFinal - initial;
+    const baselineNetPL = baselineFinal - initial;
 
-    // Total ROI: (Final - 100) / 100 * 100%
-    const roiPct = netPL;
+    const roiPct = (netPL / initial) * 100;
 
-    // Hit rates
-    const hit1x2Count = state.sessionRecap.filter(r => r.isHit1x2).length;
-    const exactHitCount = state.sessionRecap.filter(r => r.isHitScore).length;
+    const winRounds = state.sessionRecap.filter(r => r.playerPL > 0).length;
+    const exactHits = state.sessionRecap.filter(r => r.isHitScore).length;
+
+    DOM.endTitleText.textContent = `${state.roundsCount} 場激戰結束！`;
 
     // Verdict determination
     DOM.verdictBanner.className = 'verdict-banner';
@@ -722,10 +1635,10 @@
       DOM.endTrophyBadge.textContent = '🤝';
       DOM.verdictBanner.classList.add('draw');
       DOM.verdictText.textContent = '打和！平分秋色！';
-      DOM.verdictDetail.textContent = '同跟莊熱門 AI 最終同分，不分勝負！';
+      DOM.verdictDetail.textContent = '同跟莊熱門 AI 最終本金相同，不分勝負！';
     }
 
-    // Best Score check & update
+    // Best Score Handling
     const previousBest = getBestScore();
     const isNewRecord = saveBestScore(playerFinal);
     const currentBest = getBestScore();
@@ -742,56 +1655,60 @@
     } else {
       DOM.endBestScore.textContent = `${formatNum(playerFinal)} 注`;
       DOM.endRecordSub.textContent = '未能儲存本機紀錄';
-      DOM.endRecordSub.style.color = 'var(--text-muted)';
     }
 
-    // Fill stats cards
+    // Fill Stat Cards
     DOM.statFinalBankroll.innerHTML = `${formatNum(playerFinal)} <span class="sub-unit">注</span>`;
-    DOM.statNetPl.textContent = `淨損益：${formatPL(netPL)} 注`;
+    DOM.statNetPl.textContent = `淨獲利：${formatPL(netPL)} 注`;
 
     DOM.statBaselineBankroll.innerHTML = `${formatNum(baselineFinal)} <span class="sub-unit">注</span>`;
-    DOM.statBaselinePl.textContent = `淨損益：${formatPL(baselineNetPL)} 注`;
+    DOM.statBaselinePl.textContent = `淨獲利：${formatPL(baselineNetPL)} 注`;
 
-    DOM.statHitRate.textContent = `${hit1x2Count} / ${TOTAL_ROUNDS}`;
-    DOM.statHitPct.textContent = `勝率 ${(hit1x2Count / TOTAL_ROUNDS * 100).toFixed(1)}%`;
+    DOM.statHitRate.textContent = `${winRounds} / ${state.roundsCount}`;
+    DOM.statHitPct.textContent = `勝率 ${((winRounds / state.roundsCount) * 100).toFixed(1)}%`;
 
-    DOM.statScoreHits.textContent = `${exactHitCount} / ${TOTAL_ROUNDS}`;
-    const bonusTotal = exactHitCount * EXACT_SCORE_BONUS;
-    if (DOM.statScoreBonusSub) {
-      DOM.statScoreBonusSub.textContent = exactHitCount > 0 ? `額外彩金 +${bonusTotal} 注` : '無額外彩金';
-    }
+    DOM.statScoreHits.textContent = `${exactHits} / ${state.roundsCount}`;
+    const bonusTotal = exactHits * 20;
+    DOM.statScoreBonusSub.textContent = exactHits > 0 ? `額外彩金 +${bonusTotal} 注` : '無額外彩金';
+
     DOM.statRoi.textContent = `${formatPL(roiPct)}%`;
+    DOM.statRoiSub.textContent = `基於本金 ${formatNum(initial)} 注`;
 
-    // Render 10-match Recap List
-    const outcomeLabels = { H: '主勝', D: '和局', A: '客勝' };
+    if (DOM.statRerollCount) {
+      DOM.statRerollCount.innerHTML = `${state.rerollCount} <span class="sub-unit">次</span>`;
+    }
+    if (DOM.statRerollSub) {
+      DOM.statRerollSub.textContent = state.rerollCount > 0 ? `共重新抽換 ${state.rerollCount} 場賽事` : '今局全程無換場';
+    }
+
+    // Render Recap List
+    DOM.recapSectionTitle.textContent = `逐場賽果與結算詳情 (共 ${state.roundsCount} 場)`;
     DOM.recapListContainer.innerHTML = '';
 
     state.sessionRecap.forEach(r => {
-      const homeInfo = getTeamInfo(r.match.home);
-      const awayInfo = getTeamInfo(r.match.away);
       const row = document.createElement('div');
       row.className = 'recap-item';
 
-      let pickDesc = `你揀：${outcomeLabels[r.playerPick]} (${r.playerOdds.toFixed(2)})`;
+      let pickDesc = `你揀：${r.playerBetDesc} (${r.playerOdds.toFixed(2)})`;
       if (r.exactScoreActive && r.guessHome !== null && r.guessAway !== null) {
         pickDesc += ` · 波膽 ${r.guessHome}-${r.guessAway}`;
         if (r.isHitScore) pickDesc += ' 🎯中';
       }
 
-      const plClass = r.playerRoundPL >= 0 ? 'win' : 'loss';
+      const plClass = r.playerPL >= 0 ? 'win' : 'loss';
 
       row.innerHTML = `
         <div class="recap-round-num">#${r.round}</div>
         <div class="recap-match-details">
           <div class="recap-fixture">
-            ${homeInfo.zh} <span class="ft-score">${r.match.fthg} - ${r.match.ftag}</span> ${awayInfo.zh}
+            [${r.match.compName}] ${r.match.home.zh} <span class="ft-score">${r.match.fthg} - ${r.match.ftag}</span> ${r.match.away.zh}
           </div>
           <div class="recap-picks">
-            ${pickDesc} ｜ 賽果：${outcomeLabels[r.match.ftr]}
+            ${pickDesc} ｜ 賽果：${r.match.fthg}-${r.match.ftag}
           </div>
         </div>
         <div class="recap-pl-badge ${plClass}">
-          ${formatPL(r.playerRoundPL)} 注
+          ${formatPL(r.playerPL)} 注
         </div>
       `;
       DOM.recapListContainer.appendChild(row);
@@ -800,10 +1717,14 @@
 
   // --- Event Listeners Setup ---
   function setupEvents() {
-    // 1X2 choice clicks
+    // 1X2 buttons
     DOM.btnPickH.addEventListener('click', () => handlePick('H'));
     DOM.btnPickD.addEventListener('click', () => handlePick('D'));
     DOM.btnPickA.addEventListener('click', () => handlePick('A'));
+
+    // Asian Handicap buttons
+    DOM.btnPickAhH.addEventListener('click', () => handlePick('AH_H'));
+    DOM.btnPickAhA.addEventListener('click', () => handlePick('AH_A'));
 
     // Exact score toggle & steppers
     DOM.exactScoreToggle.addEventListener('change', handleScoreToggle);
@@ -811,45 +1732,38 @@
 
     DOM.stepperHomeMinus.addEventListener('click', () => {
       if (state.isRoundRevealed) return;
-      if (state.guessHome === null) {
-        state.guessHome = 0;
-      } else if (state.guessHome > 0) {
-        state.guessHome--;
-      }
+      if (state.guessHome === null) state.guessHome = 0;
+      else if (state.guessHome > 0) state.guessHome--;
       updateScoreDisplay();
     });
     DOM.stepperHomePlus.addEventListener('click', () => {
       if (state.isRoundRevealed) return;
-      if (state.guessHome === null) {
-        state.guessHome = 0;
-      } else if (state.guessHome < 9) {
-        state.guessHome++;
-      }
+      if (state.guessHome === null) state.guessHome = 0;
+      else if (state.guessHome < 9) state.guessHome++;
       updateScoreDisplay();
     });
 
     DOM.stepperAwayMinus.addEventListener('click', () => {
       if (state.isRoundRevealed) return;
-      if (state.guessAway === null) {
-        state.guessAway = 0;
-      } else if (state.guessAway > 0) {
-        state.guessAway--;
-      }
+      if (state.guessAway === null) state.guessAway = 0;
+      else if (state.guessAway > 0) state.guessAway--;
       updateScoreDisplay();
     });
     DOM.stepperAwayPlus.addEventListener('click', () => {
       if (state.isRoundRevealed) return;
-      if (state.guessAway === null) {
-        state.guessAway = 0;
-      } else if (state.guessAway < 9) {
-        state.guessAway++;
-      }
+      if (state.guessAway === null) state.guessAway = 0;
+      else if (state.guessAway < 9) state.guessAway++;
       updateScoreDisplay();
     });
 
     // Reveal & Advance
     DOM.revealBtn.addEventListener('click', revealRound);
     DOM.nextRoundBtn.addEventListener('click', advanceNextRound);
+
+    // Reroll match button
+    if (DOM.rerollBtn) {
+      DOM.rerollBtn.addEventListener('click', handleReroll);
+    }
 
     // End Actions
     DOM.replayBtn.addEventListener('click', () => {
@@ -858,44 +1772,60 @@
     });
     DOM.homeBtn.addEventListener('click', () => {
       updateStartScreenBestScore();
+      updateLivePoolCount();
       showScreen(DOM.startScreen);
     });
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      // Ignore key repeat to prevent unintended double activation
       if (e.repeat) return;
-
       const key = e.key.toUpperCase();
 
-      // In Game Screen 1X2 quick shortcuts
+      // In Game Screen keyboard shortcuts
       if (DOM.gameScreen.classList.contains('active') && !state.isRoundRevealed) {
-        if (key === '1') {
+        if (key === 'R') {
           e.preventDefault();
-          handlePick('H');
+          handleReroll();
           return;
-        } else if (key === 'X') {
-          e.preventDefault();
-          handlePick('D');
-          return;
-        } else if (key === '2') {
-          e.preventDefault();
-          handlePick('A');
-          return;
+        }
+
+        if (state.betMode === '1x2') {
+          if (key === '1') {
+            e.preventDefault();
+            handlePick('H');
+            return;
+          } else if (key === 'X' || key === '0') {
+            e.preventDefault();
+            handlePick('D');
+            return;
+          } else if (key === '2') {
+            e.preventDefault();
+            handlePick('A');
+            return;
+          }
+        } else {
+          // AH mode: 1 for Home, 2 for Away
+          if (key === '1') {
+            e.preventDefault();
+            handlePick('AH_H');
+            return;
+          } else if (key === '2') {
+            e.preventDefault();
+            handlePick('AH_A');
+            return;
+          }
         }
       }
 
-      // Check target element safely (handling cases where target is document or window)
+      // Enter / Space navigation
       const targetEl = (e.target && e.target.nodeType === 1) ? e.target : null;
       const primaryCtas = ['start-game-btn', 'reveal-btn', 'next-round-btn', 'replay-btn'];
       const isOddsBtn = targetEl && targetEl.closest('.odds-choice-btn');
       const isPrimaryCta = targetEl && (primaryCtas.includes(targetEl.id) || (isOddsBtn && state.selectedPick !== null));
-      const isOtherInteractive = targetEl && targetEl.closest('button, input, [role="radio"]') && !isPrimaryCta;
-      if (isOtherInteractive) {
-        return;
-      }
+      const isOtherInteractive = targetEl && targetEl.closest('button, input, select, details, [role="radio"]') && !isPrimaryCta;
 
-      // Enter / Space shortcut when focus is on body / container or primary CTA
+      if (isOtherInteractive) return;
+
       if (e.key === 'Enter' || e.key === ' ') {
         if (DOM.gameScreen.classList.contains('active')) {
           if (!state.isRoundRevealed) {
@@ -908,10 +1838,11 @@
             advanceNextRound();
           }
         } else if (DOM.startScreen.classList.contains('active')) {
-          e.preventDefault();
-          startNewGame();
+          if (!DOM.startGameBtn.disabled) {
+            e.preventDefault();
+            startNewGame();
+          }
         } else if (DOM.endScreen.classList.contains('active')) {
-          // Guard against accidental skip immediately after end screen opens
           if (Date.now() - state.endScreenOpenedAt < 500) return;
           e.preventDefault();
           startNewGame();
@@ -920,10 +1851,10 @@
     });
   }
 
-  // --- Initialize App ---
+  // --- Initializer ---
   document.addEventListener('DOMContentLoaded', () => {
+    initDOMElements();
     initStartScreen();
     setupEvents();
   });
-
 })();
