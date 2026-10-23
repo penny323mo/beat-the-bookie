@@ -1,0 +1,8 @@
+你係 code reviewer（唯讀，唔好改任何程式碼）。請 review 呢個 folder 嘅 v2 升級：spec 見 prompts/v2-round-0-agy-build.txt 同 prompts/v2-round-0b-agy-reroll.txt，agy 報告見 reviews/v2-round-0-agy.md 同 reviews/v2-round-1-agy-fix.md；上輪 review 見 reviews/v2-round-1.md，請先核實上輪每項是否已修好。
+重點：
+1. ah.js 亞洲盤結算：逐條驗證 quarter lines（±0.25/0.75/1.25…）、半贏半輸、走盤、讓球方向（主讓/受讓 sign）、水位係 decimal 定 HK odds、回報計算。睇 tests/ah.test.js 覆蓋夠唔夠、預期值啱唔啱，指出缺漏 case。
+2. 數據真實性：build_data.py 同 data/*.js 有冇虛構賠率；初盤/終盤欄位對應 football-data（B365/Avg/PS 同 *C 版本、AHh vs AHCh）；歐洲賽無初盤/AH 要隱藏並有註明。
+3. 換一場 reroll：同一 filtered pool、唔重複、唔扣場數、bot 同步換、落注/揭曉後 disable、計數、R 鍵。
+4. Setup：多選賽事、季度逐季+全選/全不選、5/10/20/30+自訂、本金注碼、球隊/日期篩選、即時場數、場數不足阻止開波。
+5. 離線 <script> lazy load（非 fetch）、粵語隊名、390px mobile、console error、.vercelignore 是否包含新檔（ah.js、data/）。
+將 review 寫入 reviews/v2-round-2.md，分 Critical/Major/Minor，附檔案:行號，最後一行寫 VERDICT: PASS 或 VERDICT: NEEDS_FIXES。
