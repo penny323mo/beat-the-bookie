@@ -10,7 +10,7 @@ const path = require('path');
 
 const PORT = 9222;
 const HTML_PATH = 'file://' + path.resolve(__dirname, 'index.html');
-const SCREENSHOTS_DIR = path.resolve(__dirname, 'screenshots');
+const SCREENSHOTS_DIR = path.resolve(__dirname, 'screenshots/v2-390');
 
 let chromeProcess = null;
 let ws = null;
@@ -37,16 +37,13 @@ function evaluate(expression) {
 }
 
 async function captureScreenshot(targetPath) {
-  const fullPath = path.isAbsolute(targetPath)
-    ? targetPath
-    : (targetPath.startsWith('screenshots')
-      ? path.resolve(__dirname, targetPath)
-      : path.join(SCREENSHOTS_DIR, targetPath));
-  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  const filename = path.basename(targetPath);
+  const fullPath = path.join(SCREENSHOTS_DIR, filename);
+  fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
   const res = await cdpSend('Page.captureScreenshot', { format: 'png' });
   const buffer = Buffer.from(res.data, 'base64');
   fs.writeFileSync(fullPath, buffer);
-  console.log(`📸 Saved screenshot: ${targetPath}`);
+  console.log(`📸 Saved screenshot: ${path.relative(__dirname, fullPath)}`);
 }
 
 async function sleep(ms) {
@@ -464,7 +461,23 @@ async function run() {
   }
 
   // 390px screenshot of the losing end screen
-  await captureScreenshot('screenshots/v2-390/test_end_screen_loss.png');
+  await captureScreenshot('test_end_screen_loss.png');
+
+  console.log('\n--- Test 7: Verify getBestScore ignores and purges losing records (<= startingBankroll) ---');
+  await evaluate(`
+    const { getBestScore } = window.__BTB_TEST__;
+    // Store old pre-fix losing score
+    localStorage.setItem('btb_best_v2', '96.4');
+    const resLoss = getBestScore(100);
+    if (resLoss !== null) throw new Error('getBestScore(100) should return null for 96.4');
+    if (localStorage.getItem('btb_best_v2') !== null) throw new Error('localStorage should be purged of 96.4');
+
+    // Store valid winning score
+    localStorage.setItem('btb_best_v2', '125.5');
+    const resWin = getBestScore(100);
+    if (resWin !== 125.5) throw new Error('getBestScore(100) should return 125.5');
+  `);
+  console.log('✅ getBestScore correctly ignored and purged stale losing record!');
 
   console.log('\n--- Checking for Console Errors ---');
   if (consoleErrors.length > 0) {

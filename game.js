@@ -175,12 +175,23 @@
   // --- LocalStorage Best Score Handling ---
   const STORAGE_KEY = 'btb_best_v2';
 
-  function getBestScore() {
+  function getBestScore(startingBankroll) {
     try {
       const val = localStorage.getItem(STORAGE_KEY);
       if (val !== null) {
         const num = parseFloat(val);
-        if (!isNaN(num)) return num;
+        const threshold = Number.isFinite(startingBankroll)
+          ? startingBankroll
+          : (typeof state !== 'undefined' && Number.isFinite(state.startingBankroll) ? state.startingBankroll : 100);
+        if (!isNaN(num)) {
+          if (num > threshold) {
+            return num;
+          } else {
+            // Treat stored scores <= startingBankroll as empty and purge stale non-profitable record
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            return null;
+          }
+        }
       }
     } catch (e) {
       // Graceful fallback for file:// or private sandbox
@@ -190,7 +201,7 @@
 
   function saveBestScore(score, startingBankroll = 100) {
     try {
-      const cur = getBestScore();
+      const cur = getBestScore(startingBankroll);
       // Only record a new high score if it is profitable (> startingBankroll) AND beats previous best
       if (score > startingBankroll && (cur === null || score > cur)) {
         localStorage.setItem(STORAGE_KEY, score.toFixed(1));
@@ -703,7 +714,8 @@
 
   // --- Start Screen Setup & Listeners ---
   function updateStartScreenBestScore() {
-    const best = getBestScore();
+    const threshold = (typeof state !== 'undefined' && Number.isFinite(state.startingBankroll)) ? state.startingBankroll : 100;
+    const best = getBestScore(threshold);
     if (best !== null) {
       DOM.bestScoreDisplay.textContent = `${formatNum(best)} 注`;
     } else {
@@ -895,11 +907,13 @@
             DOM.customBankrollWrap.style.display = 'none';
             state.startingBankroll = parseFloat(bVal);
           }
+          updateStartScreenBestScore();
         });
       });
 
       DOM.customBankrollInput.addEventListener('input', () => {
         state.startingBankroll = Math.max(1, parseFloat(DOM.customBankrollInput.value) || 1);
+        updateStartScreenBestScore();
       });
     }
 
@@ -1713,17 +1727,70 @@
 
     DOM.endTitleText.textContent = `${state.roundsCount} 場激戰結束！`;
 
-    // Verdict determination via pure function (verdict.js)
-    const v = (typeof window.calculateVerdict === 'function')
-      ? window.calculateVerdict(playerFinal, baselineFinal, initial)
-      : {
-          title: netPL > 0 ? '贏咗莊家！' : (netPL < 0 ? '輸給莊家' : '打和 / 保本'),
-          subtitle: '',
-          detail: '',
-          bookiePnlText: '',
-          statusClass: netPL > 0 ? 'win' : (netPL < 0 ? 'loss' : 'draw'),
-          trophy: netPL > 0 ? '🏆' : (netPL < 0 ? '📉' : '🤝')
-        };
+    // Verdict determination via pure function (verdict.js) with robust inline fallback
+    let v;
+    if (typeof window.calculateVerdict === 'function') {
+      v = window.calculateVerdict(playerFinal, baselineFinal, initial);
+    } else {
+      const pNet = (Math.round((playerFinal - initial) * 10) / 10) || 0;
+      const bNet = (Math.round((baselineFinal - initial) * 10) / 10) || 0;
+      const dAI = (Math.round((playerFinal - baselineFinal) * 10) / 10) || 0;
+      const absP = Math.abs(pNet).toFixed(1);
+      const absD = Math.abs(dAI).toFixed(1);
+
+      let title = '打和 / 保本';
+      let statusClass = 'draw';
+      let trophy = '🤝';
+      let bookiePnlText = '今局同莊家打和（保本不失）';
+
+      if (pNet > 0) {
+        title = '贏咗莊家！';
+        statusClass = 'win';
+        trophy = '🏆';
+        bookiePnlText = `你今局贏咗莊家 ${absP} 注`;
+      } else if (pNet < 0) {
+        title = '輸給莊家';
+        statusClass = 'loss';
+        trophy = '📉';
+        bookiePnlText = `莊家今局喺你身上贏咗 ${absP} 注`;
+      }
+
+      let subtitle = '同電腦對手打和';
+      let detail = '大戰結束，大家本金分毫不差，同莊家與電腦對手雙雙平手！';
+      if (pNet > 0) {
+        if (dAI > 0) {
+          subtitle = `仲贏埋電腦對手 ${absD} 注`;
+          detail = '犀利！你成功戰勝莊家抽水，而且成績好過盲跟熱門嘅電腦對手！';
+        } else if (dAI < 0) {
+          subtitle = `但電腦對手贏你 ${absD} 注`;
+          detail = '好嘢！你成功喺莊家手上贏到錢，不過電腦對手今局盲跟熱門斬獲更多！';
+        } else {
+          subtitle = '同電腦對手打和';
+          detail = '好嘢！你同電腦對手雙雙擊敗莊家，戰績完全一致！';
+        }
+      } else if (pNet < 0) {
+        if (dAI > 0) {
+          subtitle = `但你贏咗電腦對手 ${absD} 注`;
+          detail = '雖然今局輸畀莊家抽水，但你嘅表現依然好過盲跟熱門嘅電腦對手，輸少當贏！';
+        } else if (dAI < 0) {
+          subtitle = `電腦對手贏你 ${absD} 注`;
+          detail = '莊家抽水無情，今局盲跟熱門策略稍勝一籌，收拾心情再接再厲！';
+        } else {
+          subtitle = '同電腦對手打和';
+          detail = '你同電腦對手今局成績一樣，齊齊畀莊家抽水，下局再戰！';
+        }
+      } else {
+        if (dAI > 0) {
+          subtitle = `兼且贏咗電腦對手 ${absD} 注`;
+          detail = '成功保本不失！而且成績壓倒盲跟熱門嘅電腦對手，立於不敗之地！';
+        } else if (dAI < 0) {
+          subtitle = `但電腦對手贏你 ${absD} 注`;
+          detail = '成功保本不失，但電腦對手盲跟熱門賺咗少少，下局再挑戰贏莊家！';
+        }
+      }
+
+      v = { title, subtitle, detail, bookiePnlText, statusClass, trophy, playerNet: pNet, baselineNet: bNet, diffVsAI: dAI };
+    }
 
     DOM.endTrophyBadge.textContent = v.trophy;
     DOM.verdictBanner.className = `verdict-banner ${v.statusClass}`;
@@ -1740,9 +1807,9 @@
     DOM.verdictDetail.textContent = v.detail;
 
     // Best Score Handling
-    const previousBest = getBestScore();
+    const previousBest = getBestScore(initial);
     const isNewRecord = saveBestScore(playerFinal, initial);
-    const currentBest = getBestScore();
+    const currentBest = getBestScore(initial);
 
     if (currentBest !== null) {
       DOM.endBestScore.textContent = `${formatNum(currentBest)} 注`;
@@ -1959,7 +2026,7 @@
     initStartScreen();
     setupEvents();
     if (typeof window !== 'undefined') {
-      window.__BTB_TEST__ = { state, DOM, showEndScreen, formatNum, formatPL };
+      window.__BTB_TEST__ = { state, DOM, showEndScreen, formatNum, formatPL, getBestScore, saveBestScore };
     }
   });
 })();
