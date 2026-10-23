@@ -1353,9 +1353,16 @@
   // --- Pick Selection Handling ---
   function handlePick(pick) {
     if (state.isRoundRevealed) return;
-    state.selectedPick = pick;
+    const match = state.sessionMatches[state.currentRoundIdx];
+    if (!match) return;
 
     if (state.betMode === '1x2') {
+      const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
+      if (!activeOdds || !activeOdds.h || !activeOdds.d || !activeOdds.a) {
+        return; // Refuse handlePick when active 1X2 market is missing
+      }
+
+      state.selectedPick = pick;
       [
         { btn: DOM.btnPickH, key: 'H' },
         { btn: DOM.btnPickD, key: 'D' },
@@ -1370,6 +1377,12 @@
       DOM.revealBtn.disabled = false;
       DOM.revealBtnText.textContent = `確認下注【${labelMap[pick]}】· 揭曉賽果 📢`;
     } else {
+      const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
+      if (!activeAH || activeAH.line === null || activeAH.line === undefined || !activeAH.h || !activeAH.a) {
+        return; // Refuse handlePick when active AH market is missing
+      }
+
+      state.selectedPick = pick;
       [
         { btn: DOM.btnPickAhH, key: 'AH_H' },
         { btn: DOM.btnPickAhA, key: 'AH_A' }
@@ -1379,7 +1392,6 @@
         item.btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
       });
 
-      const match = state.sessionMatches[state.currentRoundIdx];
       const teamLabel = pick === 'AH_H' ? `${match.home.zh} (主)` : `${match.away.zh} (客)`;
       DOM.revealBtn.disabled = false;
       DOM.revealBtnText.textContent = `確認下注【${teamLabel}】· 揭曉賽果 📢`;
@@ -1434,8 +1446,37 @@
   function revealRound() {
     if (state.isRoundRevealed || !state.selectedPick) return;
 
-    state.isRoundRevealed = true;
     const match = state.sessionMatches[state.currentRoundIdx];
+    if (!match) return;
+
+    // Guard: Check market availability BEFORE setting isRoundRevealed or disabling controls
+    let isMarketMissing = false;
+    if (state.betMode === '1x2') {
+      const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
+      if (!activeOdds || !activeOdds.h || !activeOdds.d || !activeOdds.a) {
+        isMarketMissing = true;
+      }
+    } else {
+      const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
+      if (!activeAH || activeAH.line === null || activeAH.line === undefined || !activeAH.h || !activeAH.a) {
+        isMarketMissing = true;
+      }
+    }
+
+    if (isMarketMissing) {
+      if (state.unusedPool && state.unusedPool.length > 0) {
+        alert('此比賽缺少對應盤口賠率數據，系統已自動為你更換另一場比賽！');
+        handleReroll();
+      } else {
+        alert('此比賽缺少對應盤口賠率數據，請返回設定或重設賽事。');
+        state.selectedPick = null;
+        DOM.revealBtn.disabled = true;
+        DOM.revealBtnText.textContent = '此場賽事無有效賠率數據';
+      }
+      return;
+    }
+
+    state.isRoundRevealed = true;
     const stake = state.stake;
 
     // Disable betting buttons, reroll button & exact score
@@ -1466,10 +1507,6 @@
 
     if (state.betMode === '1x2') {
       const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
-      if (!activeOdds || !activeOdds.h || !activeOdds.d || !activeOdds.a) {
-        alert('此比賽缺少對應主客和賠率數據，無法完成結算！');
-        return;
-      }
       const math = calculateOddsMath(activeOdds.h, activeOdds.d, activeOdds.a);
 
       // Player 1X2
@@ -1505,10 +1542,6 @@
     } else {
       // Asian Handicap Mode
       const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
-      if (!activeAH || activeAH.line === null || activeAH.line === undefined || !activeAH.h || !activeAH.a) {
-        alert('此比賽缺少對應亞洲盤數據，無法完成結算！');
-        return;
-      }
       const goalDiffH = match.fthg - match.ftag; // Home goal diff
 
       // Player AH

@@ -19,9 +19,9 @@
    * @returns {{ profit: number, outcome: 'win' | 'halfwin' | 'push' | 'halfloss' | 'loss' }}
    */
   function settleAH(goalDiffForBackedSide, line, odds, stake) {
-    if (typeof goalDiffForBackedSide !== 'number' || typeof line !== 'number' ||
-        typeof odds !== 'number' || typeof stake !== 'number') {
-      throw new TypeError('Invalid arguments to settleAH');
+    if (!Number.isFinite(goalDiffForBackedSide) || !Number.isFinite(line) ||
+        !Number.isFinite(odds) || !Number.isFinite(stake)) {
+      throw new TypeError('Invalid arguments to settleAH: all arguments must be finite numbers');
     }
 
     // Check if line is a quarter handicap (ends in .25 or .75)

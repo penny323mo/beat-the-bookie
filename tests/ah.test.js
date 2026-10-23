@@ -629,6 +629,24 @@ test('Match scenario 4: FTHG=1, FTAG=2, AHh=+0.5, oddsH=2.10, oddsA=1.75', () =>
   assert.strictEqual(awayRes.profit, 7.50);
 });
 
+// 24. Argument validation: Number.isFinite rejects NaN, Infinity, non-numbers with TypeError
+test('Argument validation: settleAH throws TypeError on NaN, Infinity, or non-finite numbers', () => {
+  assert.throws(() => settleAH(NaN, 0, 1.9, 10), TypeError);
+  assert.throws(() => settleAH(1, NaN, 1.9, 10), TypeError);
+  assert.throws(() => settleAH(1, 0, NaN, 10), TypeError);
+  assert.throws(() => settleAH(1, 0, 1.9, NaN), TypeError);
+
+  assert.throws(() => settleAH(Infinity, 0, 1.9, 10), TypeError);
+  assert.throws(() => settleAH(1, -Infinity, 1.9, 10), TypeError);
+  assert.throws(() => settleAH(1, 0, Infinity, 10), TypeError);
+  assert.throws(() => settleAH(1, 0, 1.9, Infinity), TypeError);
+
+  assert.throws(() => settleAH('1', 0, 1.9, 10), TypeError);
+  assert.throws(() => settleAH(1, null, 1.9, 10), TypeError);
+  assert.throws(() => settleAH(1, 0, undefined, 10), TypeError);
+  assert.throws(() => settleAH(), TypeError);
+});
+
 console.log(`\nResults: ${passedCount} / ${totalCount} tests passed.`);
 if (passedCount === totalCount) {
   console.log('✅ ALL ASIAN HANDICAP UNIT TESTS PASSED!');
