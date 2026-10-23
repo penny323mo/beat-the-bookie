@@ -376,6 +376,74 @@ test('Line -2.25: loss when diff <= 1', () => {
   assert.strictEqual(res.profit, -10.00);
 });
 
+// 20. Line +2.5 (Two and a half balls received)
+test('Line +2.5: win when diff >= -2', () => {
+  const res1 = settleAH(-2, 2.5, ODDS, STAKE);
+  assert.strictEqual(res1.outcome, 'win');
+  assert.strictEqual(res1.profit, 9.00);
+
+  const res2 = settleAH(-1, 2.5, ODDS, STAKE);
+  assert.strictEqual(res2.outcome, 'win');
+  assert.strictEqual(res2.profit, 9.00);
+});
+
+test('Line +2.5: loss when diff <= -3', () => {
+  const res = settleAH(-3, 2.5, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'loss');
+  assert.strictEqual(res.profit, -10.00);
+});
+
+// 21. Line -2.5 (Two and a half balls given)
+test('Line -2.5: win when diff >= 3', () => {
+  const res = settleAH(3, -2.5, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'win');
+  assert.strictEqual(res.profit, 9.00);
+});
+
+test('Line -2.5: loss when diff <= 2', () => {
+  const res = settleAH(2, -2.5, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'loss');
+  assert.strictEqual(res.profit, -10.00);
+});
+
+// 22. Line +2.75 (+2.5 and +3.0 received)
+test('Line +2.75: win when diff >= -2', () => {
+  const res = settleAH(-2, 2.75, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'win');
+  assert.strictEqual(res.profit, 9.00);
+});
+
+test('Line +2.75: halfloss when diff === -3 (+2.5 loss, +3.0 push)', () => {
+  const res = settleAH(-3, 2.75, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'halfloss');
+  assert.strictEqual(res.profit, -5.00);
+});
+
+test('Line +2.75: loss when diff <= -4', () => {
+  const res = settleAH(-4, 2.75, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'loss');
+  assert.strictEqual(res.profit, -10.00);
+});
+
+// 23. Line -2.75 (-2.5 and -3.0 given)
+test('Line -2.75: win when diff >= 4', () => {
+  const res = settleAH(4, -2.75, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'win');
+  assert.strictEqual(res.profit, 9.00);
+});
+
+test('Line -2.75: halfwin when diff === 3 (-2.5 win, -3.0 push)', () => {
+  const res = settleAH(3, -2.75, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'halfwin');
+  assert.strictEqual(res.profit, 4.50);
+});
+
+test('Line -2.75: loss when diff <= 2', () => {
+  const res = settleAH(2, -2.75, ODDS, STAKE);
+  assert.strictEqual(res.outcome, 'loss');
+  assert.strictEqual(res.profit, -10.00);
+});
+
 // 20. Non-10 Stakes (5, 25, 50, 100)
 test('Non-10 stake: stake=5, odds=1.95 on line -0.75 halfwin and halfloss', () => {
   const stake5 = 5;

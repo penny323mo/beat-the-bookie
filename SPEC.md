@@ -8,7 +8,7 @@ Single-page browser game using REAL European football data (Premier League, La L
   - `data/{epl,laliga,seriea,bundesliga,ligue1,ucl,uel,uecl}.js`: Compact match arrays lazy-loaded dynamically via `<script>` tags. Total raw size < 1.5MB.
 - `team_names.py` — Cantonese translations (香港/澳門常用譯名) for all 277 teams across all 8 competitions.
 - `ah.js` — Pure function `settleAH(goalDiffForBackedSide, line, odds, stake)` implementing full, half, and quarter-ball Asian Handicap settlement rules (`win`, `halfwin`, `push`, `halfloss`, `loss`). Works in browser (`window.settleAH`) and Node.js (`module.exports`).
-- `tests/ah.test.js` — Automated unit test suite covering lines `0, ±0.25, ±0.5, ±0.75, ±1, ±1.25, ±1.5, ±1.75, ±2, ±2.25`, non-10 stakes, even odds, and identity checks.
+- `tests/ah.test.js` — Automated unit test suite covering lines `0, ±0.25, ±0.5, ±0.75, ±1, ±1.25, ±1.5, ±1.75, ±2, ±2.25, ±2.5, ±2.75`, non-10 stakes, even odds, and identity checks.
 - `index.html`, `style.css`, `game.js` — Complete game UI and logic in authentic Cantonese (廣東話).
 - `README.md` — Project documentation and run guide.
 

@@ -88,7 +88,7 @@
 node tests/ah.test.js
 ```
 
-測試涵蓋全線盤口（$0, \pm 0.25, \pm 0.5, \pm 0.75, \pm 1, \pm 1.25, \pm 1.5, \pm 1.75, \pm 2, \pm 2.25$）、主客兩瓣五種結算結果（win, halfwin, push, halfloss, loss）、非 10 注碼、平手盤等額賠率（2.00）、盤口拆半恆等性及全線窮舉校驗，全數 63 項測試 100% 通過。
+測試涵蓋全線盤口（$0, \pm 0.25, \pm 0.5, \pm 0.75, \pm 1, \pm 1.25, \pm 1.5, \pm 1.75, \pm 2, \pm 2.25, \pm 2.5, \pm 2.75$）、主客兩瓣五種結算結果（win, halfwin, push, halfloss, loss）、非 10 注碼、平手盤等額賠率（2.00）、盤口拆半恆等性及全線窮舉校驗，全數 73 項測試 100% 通過。
 
 ---
 
@@ -101,6 +101,6 @@ python3 build_data.py
 ```
 
 腳本會輸出統計報告、比對各賽季場次，並產出：
-- `data/meta.js`（約 18 KB）
+- `data/meta.js`（約 20.3 KB）
 - `data/{epl,laliga,seriea,bundesliga,ligue1,ucl,uel,uecl}.js`（每個 90 KB 至 213 KB）
-- 全部檔案總大小約 1.33 MB（符合小於 1.5 MB 規範）。
+- 全部檔案總大小約 1,295.5 KB (1.27 MB)（符合小於 1.5 MB 規範）。

@@ -534,7 +534,7 @@
                 if (state.oddsType === 'opening') {
                   count += seasonInfo.open1x2 || 0;
                 } else {
-                  count += seasonInfo.close1x2 || (seasonInfo.total || 0);
+                  count += Number(seasonInfo.close1x2) || 0;
                 }
               }
             }
@@ -1191,6 +1191,35 @@
   // --- Render 1X2 Market & Movement ---
   function render1X2Board(match) {
     const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
+    if (!activeOdds || !activeOdds.h || !activeOdds.d || !activeOdds.a) {
+      console.warn('activeOdds missing for 1X2 match:', match);
+      DOM.marginValueDisplay.textContent = '無賠率';
+      DOM.oddsValH.textContent = '—';
+      DOM.oddsValD.textContent = '—';
+      DOM.oddsValA.textContent = '—';
+      DOM.probValH.textContent = '—';
+      DOM.probValD.textContent = '—';
+      DOM.probValA.textContent = '—';
+      DOM.favBadgeH.innerHTML = '';
+      DOM.favBadgeD.innerHTML = '';
+      DOM.favBadgeA.innerHTML = '';
+      [DOM.btnPickH, DOM.btnPickD, DOM.btnPickA].forEach(btn => {
+        btn.classList.remove('selected');
+        btn.disabled = true;
+        btn.setAttribute('aria-pressed', 'false');
+      });
+      DOM.movFlowH.textContent = '無賠率';
+      DOM.movBadgeH.textContent = '無數據';
+      DOM.movBadgeH.className = 'mov-badge flat';
+      DOM.movFlowD.textContent = '無賠率';
+      DOM.movBadgeD.textContent = '無數據';
+      DOM.movBadgeD.className = 'mov-badge flat';
+      DOM.movFlowA.textContent = '無賠率';
+      DOM.movBadgeA.textContent = '無數據';
+      DOM.movBadgeA.className = 'mov-badge flat';
+      return;
+    }
+
     const math = calculateOddsMath(activeOdds.h, activeOdds.d, activeOdds.a);
 
     DOM.marginValueDisplay.textContent = `${math.marginPct.toFixed(1)}%`;
@@ -1254,6 +1283,25 @@
   // --- Render Asian Handicap Market & Movement ---
   function renderAHBoard(match) {
     const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
+    if (!activeAH || activeAH.line === null || activeAH.line === undefined || !activeAH.h || !activeAH.a) {
+      console.warn('activeAH missing for AH match:', match);
+      DOM.ahLabelH.textContent = match.home.zh;
+      DOM.ahLabelA.textContent = match.away.zh;
+      DOM.ahLineH.textContent = '—';
+      DOM.ahLineA.textContent = '—';
+      DOM.ahOddsH.textContent = '—';
+      DOM.ahOddsA.textContent = '—';
+      DOM.favBadgeAhH.innerHTML = '';
+      DOM.favBadgeAhA.innerHTML = '';
+      [DOM.btnPickAhH, DOM.btnPickAhA].forEach(btn => {
+        btn.classList.remove('selected');
+        btn.disabled = true;
+        btn.setAttribute('aria-pressed', 'false');
+      });
+      DOM.ahMovementFlowText.textContent = '此賽事無可用的亞洲讓球盤數據';
+      DOM.ahLineShiftBadge.style.display = 'none';
+      return;
+    }
 
     // Line for Home and Away
     const homeLine = activeAH.line;
@@ -1296,7 +1344,8 @@
         DOM.ahLineShiftBadge.style.display = 'inline-block';
       }
     } else {
-      DOM.ahMovementFlowText.textContent = `終盤讓球：主 ${formatAHLine(activeAH.line)} (主 ${activeAH.h.toFixed(2)} / 客 ${activeAH.a.toFixed(2)})`;
+      const typeLabel = state.oddsType === 'opening' ? '初盤讓球' : '終盤讓球';
+      DOM.ahMovementFlowText.textContent = `${typeLabel}：主 ${formatAHLine(activeAH.line)} (主 ${activeAH.h.toFixed(2)} / 客 ${activeAH.a.toFixed(2)})`;
       DOM.ahLineShiftBadge.style.display = 'none';
     }
   }
@@ -1417,6 +1466,10 @@
 
     if (state.betMode === '1x2') {
       const activeOdds = (state.oddsType === 'opening') ? match.open1X2 : match.close1X2;
+      if (!activeOdds || !activeOdds.h || !activeOdds.d || !activeOdds.a) {
+        alert('此比賽缺少對應主客和賠率數據，無法完成結算！');
+        return;
+      }
       const math = calculateOddsMath(activeOdds.h, activeOdds.d, activeOdds.a);
 
       // Player 1X2
@@ -1452,6 +1505,10 @@
     } else {
       // Asian Handicap Mode
       const activeAH = (state.oddsType === 'opening') ? match.openAH : match.closeAH;
+      if (!activeAH || activeAH.line === null || activeAH.line === undefined || !activeAH.h || !activeAH.a) {
+        alert('此比賽缺少對應亞洲盤數據，無法完成結算！');
+        return;
+      }
       const goalDiffH = match.fthg - match.ftag; // Home goal diff
 
       // Player AH
