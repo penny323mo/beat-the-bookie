@@ -29,7 +29,7 @@
             <h2 id="start-title" class="section-title">挑戰莊家「抽水」神話！</h2>
             <p class="intro-desc">
               平時睇波買波，莊家長遠係咪一定必贏？<br>
-              呢度收錄咗英超、西甲、意甲、德甲、法甲及三大歐洲賽嘅真實開賽賠率同賽果。自由設定賽事、賽季、玩法（1X2 或 亞洲讓球盤）與初終盤，同只買「莊家熱門」嘅 AI 虛擬盲跟對手同場較量，睇下你嘅眼光勁啲，定係莊家抽水無情！
+              呢度收錄咗英超、西甲、意甲、德甲、法甲及三大歐洲賽嘅真實開賽賠率同賽果。自由設定賽事、賽季、玩法（1X2 或 亞洲讓球盤）與初終盤，同「電腦對手（次次跟熱門）」同場較量，兩者一齊同莊家對賭，睇下你嘅眼光勁啲，定係莊家抽水無情！
             </p>
           </div>
 
@@ -59,8 +59,8 @@
             <div class="rule-item">
               <div class="rule-icon">🤖</div>
               <div class="rule-text">
-                <strong>對抗「跟莊熱門 AI」</strong>
-                <span>虛擬對手每場盲買賠率最低嘅大熱門，終局睇邊個本金多！</span>
+                <strong>同場對手「電腦對手（次次跟熱門）」</strong>
+                <span>電腦對手每場盲買莊家熱門，同你一齊同莊家對賭，終局睇邊個成績好！</span>
               </div>
             </div>
             <div class="rule-item">
@@ -296,7 +296,7 @@
             <div class="bankroll-box baseline-box">
               <div class="bankroll-header">
                 <span class="actor-icon">🤖</span>
-                <span class="actor-name">跟莊熱門AI</span>
+                <span class="actor-name">電腦對手（次次跟熱門）</span>
               </div>
               <div class="bankroll-num" id="baseline-bankroll-display">100.0 <span class="unit">注</span></div>
               <div class="bankroll-change" id="baseline-change-display">±0.0</div>
@@ -533,7 +533,7 @@
                   <span class="res-val" id="player-round-pl">+9.5 注</span>
                 </div>
                 <div class="result-comparison-row">
-                  <span class="res-label">🤖 跟莊熱門結算：</span>
+                  <span class="res-label">🤖 電腦對手（次次跟熱門）結算：</span>
                   <span class="res-val" id="baseline-round-pl">-10.0 注 (買客隊)</span>
                 </div>
               </div>
@@ -555,8 +555,14 @@
             <h2 class="section-title" id="end-title-text">大戰結束！</h2>
             <div class="verdict-banner" id="verdict-banner">
               <span class="verdict-text" id="verdict-text" tabindex="-1">贏咗莊家！</span>
+              <div class="verdict-subtitle" id="verdict-subtitle">仲贏埋電腦對手 10.0 注</div>
             </div>
-            <p class="verdict-detail" id="verdict-detail">你嘅眼光成功打破莊家抽水劣勢，戰勝盲跟熱門嘅 AI！</p>
+            <div class="bookie-pnl-banner" id="bookie-pnl-banner">
+              <span class="bookie-pnl-icon">🏦</span>
+              <span class="bookie-pnl-text" id="bookie-pnl-text">你今局贏咗莊家 20.0 注</span>
+            </div>
+            <p class="house-clarification-note">💡 說明：莊家係開盤抽水嘅 House，你同電腦對手都係賭客，一齊同莊家對賭。</p>
+            <p class="verdict-detail" id="verdict-detail">你嘅眼光成功打破莊家抽水劣勢，戰勝盲跟熱門嘅電腦對手！</p>
           </div>
 
           <!-- Stats Grid -->
@@ -568,7 +574,7 @@
             </div>
 
             <div class="stat-card">
-              <div class="stat-label">跟莊熱門 AI 本金</div>
+              <div class="stat-label">電腦對手（次次跟熱門）本金</div>
               <div class="stat-value" id="stat-baseline-bankroll">98.0 <span class="sub-unit">注</span></div>
               <div class="stat-subtext" id="stat-baseline-pl">淨獲利：-2.0 注</div>
             </div>
@@ -634,6 +640,7 @@
   </div>
 
   <script src="ah.js"></script>
+  <script src="verdict.js"></script>
   <script src="data/meta.js"></script>
   <script src="game.js"></script>
 </body>

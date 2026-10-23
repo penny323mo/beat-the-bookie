@@ -1,0 +1,7 @@
+[Verdict bug fix] iPhone bug：終局畫面玩家本金 96.4（起始 100，淨 -3.6），AI 94.6，標題仍顯示「贏咗莊家！」同讚揚文字。請修正：
+1. 主標題只按玩家自己淨盈虧（最終本金 - state.startingBankroll，四捨五入到 0.1 後比較避免浮點誤差）：>0「贏咗莊家！」；<0「輸給莊家」紅色/中性樣式；==0「打和 / 保本」。讚揚/安慰文字要對應。
+2. 對電腦對手結果獨立做副標：例如「但你贏咗電腦對手 1.8 注」/「仲贏埋電腦對手 x 注」/「電腦對手贏你 x 注」/「同電腦對手打和」，所有組合文字通順正確。
+3. Penny 以為 AI 本金卡係莊家嘅錢。將對手改名為「電腦對手（次次跟熱門）」（HUD、終局、所有文案一致），終局加一行莊家盈虧：「莊家今局喺你身上贏咗 3.6 注」/「你今局贏咗莊家 X 注」/打和。終局要清楚表明莊家係 house，電腦對手只係另一個玩家，兩者都同莊家對賭。
+4. 檢查 ROI、badges、最佳紀錄同 verdict 一致合理。
+5. verdict 邏輯抽成純函數 verdict.js（<script> 載入，加入 .vercelignore 白名單），加 tests/verdict.test.js 覆蓋 4 組合（贏/輸莊家 × 贏/輸電腦對手）加打和；擴展 test_e2e.js 驗證一局輸錢嘅終局畫面，390px 截圖存 screenshots/v2-390/test_end_screen_loss.png。
+唔好 git commit。跑 node tests/ah.test.js、node tests/verdict.test.js、node --experimental-websocket test_e2e.js 全過。報告寫入 reviews/v2-verdict-agy.md。
